@@ -1,0 +1,35 @@
+version: '3.6'
+services:
+  mongodb:
+    image: mongo:latest
+    restart: always
+    networks:
+      - mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb:/data/db
+    command: mongod --quiet --logpath /dev/null
+
+  server:
+    build:
+      context: ./server
+      target: install-dependencies
+    command: npm run start:dev
+    networks:
+      - mongodb
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./server/src:/user/src/app/server/src
+    depends_on:
+      - mongodb
+    env_file:
+      - ./server/.env
+
+networks:
+  mongodb:
+    driver: bridge
+
+volumes:
+  mongodb:
