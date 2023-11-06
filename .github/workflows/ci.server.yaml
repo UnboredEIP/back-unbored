@@ -15,10 +15,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Build the Docker image
-        working-directory: ./server
         run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
       - name: Run Prettier
-        working-directory: ./server
         run: docker run $IMAGE_TAG_SERVER sh -c 'npm run format:verify'
   lint:
     name: Server - Lint
@@ -29,10 +27,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Build the Docker image
-        working-directory: ./server
         run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
       - name: Run ESLint
-        working-directory: ./server
         run: docker run $IMAGE_TAG_SERVER sh -c 'npm run lint:verify'
   test_and_analyze:
     name: Server - Test and Analyze
@@ -43,10 +39,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Build the Docker image
-        working-directory: ./server
         run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
       - name: Run tests
-        working-directory: ./server
         run: docker run -v ./coverage:/user/src/app/server/coverage $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
