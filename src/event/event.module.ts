@@ -7,9 +7,11 @@ import { JwtStrategy } from '../auth/strategies/jwt.strategy';
 import { EventSchema } from './schemas/events.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: 'User', schema: UserSchema}]), MongooseModule.forFeature([{name: 'Events', schema: EventSchema}])],
+  imports: [
+    MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: 'Events', schema: EventSchema }]),
+  ],
   providers: [EventService, JwtStrategy],
-  controllers: [EventController]
+  controllers: [EventController],
 })
-
 export class EventModule {}
