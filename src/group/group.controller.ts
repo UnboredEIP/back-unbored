@@ -23,7 +23,7 @@ export class GroupController {
   @Get('/')
   async showGroup(
     @Req() req,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown>[] }> {
+  ): Promise<{ status: HttpStatus; groups: Object[] }> {
     return this.groupService.showGroups(req.user);
   }
 
@@ -31,7 +31,7 @@ export class GroupController {
   @Get('/show')
   async showGroupWithId(
     @Query('group_id') id,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown> }> {
+  ): Promise<{ status: HttpStatus; groups: Object }> {
     return this.groupService.showGroupWithId(id);
   }
 
@@ -39,7 +39,7 @@ export class GroupController {
   @Get('/invitations')
   async showInvitation(
     @Req() req,
-  ): Promise<{ status: HttpStatus; invitations: NonNullable<unknown>[] }> {
+  ): Promise<{ status: HttpStatus; invitations: Object[] }> {
     return this.groupService.showInvitation(req.user);
   }
 

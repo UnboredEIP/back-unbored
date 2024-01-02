@@ -6,6 +6,7 @@ import {
   IsArray,
   IsDateString,
   ArrayMinSize,
+  IsOptional,
 } from 'class-validator';
 
 export class createEventDto {
@@ -20,4 +21,8 @@ export class createEventDto {
   @IsArray()
   @ArrayMinSize(1)
   readonly categories: string[];
+
+  @IsOptional()
+  @IsDateString()
+  readonly date: string;
 }

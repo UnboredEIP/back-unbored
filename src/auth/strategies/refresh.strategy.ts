@@ -14,12 +14,12 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'refresh') {
     super({
       jwtFromRequest: ExtractJwt.fromHeader('refresh'),
       ignoreExpiration: false,
-      secretOrKey: '123456',
+      secretOrKey: process.env.JWT_REFRESH,
     });
   }
 
   async validate(payload: any) {
-    const { id } = payload;
+    const id = payload.users._id;
     const user = await this.userModel
       .findById(id)
       .select('-password')

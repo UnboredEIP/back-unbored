@@ -29,45 +29,48 @@ export class EventService {
 
   async showEvent(
     user: User,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
-    return { status: HttpStatus.OK, reservations: user.reservations };
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
+    return { statusCode: HttpStatus.OK, reservations: user.reservations };
   }
 
-  async listAllEvent(): Promise<{
-    status: HttpStatus;
-    events: NonNullable<unknown>[];
-  }> {
+  async listAllEvent(): Promise<{ statusCode: HttpStatus; events: Object[] }> {
     const Events = await this.eventModel.find();
-    return { status: HttpStatus.OK, events: Events };
+    return { statusCode: HttpStatus.OK, events: Events };
   }
 
   async addEvent(
     userId: string,
     addEvent: AddEventDto,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
     const updatedUser = await this.userModel.findByIdAndUpdate(
       userId,
       { $addToSet: { reservations: { $each: addEvent.events } } },
       { new: true },
     );
-    return { status: HttpStatus.OK, reservations: updatedUser.reservations };
+    return {
+      statusCode: HttpStatus.OK,
+      reservations: updatedUser.reservations,
+    };
   }
 
   async removeEvent(
     userId: string,
     deleteEvent: DeleteEventDto,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
     const updatedUser = await this.userModel.findByIdAndUpdate(
       userId,
       { $pull: { reservations: { $in: deleteEvent.events } } },
       { new: true },
     );
-    return { status: HttpStatus.OK, reservations: updatedUser.reservations };
+    return {
+      statusCode: HttpStatus.OK,
+      reservations: updatedUser.reservations,
+    };
   }
 
   async getEventById(
     eventId: string,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
     if (!Types.ObjectId.isValid(eventId)) {
       throw new NotFoundException('Invalid Id');
     }
@@ -75,30 +78,27 @@ export class EventService {
     if (!event) {
       throw new NotFoundException('Invalid Id');
     }
-    return { status: HttpStatus.OK, event: event };
+    return { statusCode: HttpStatus.OK, event: event };
   }
 
   async createUnboredEvent(
     createEventDto: createEventDto,
-  ): Promise<{ status: HttpStatus; event: Events }> {
-    const { name, categories, address } = createEventDto;
-    try {
-      const event = await this.eventModel.create({
-        name,
-        categories,
-        address,
-      });
-      return { status: HttpStatus.CREATED, event: event };
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new ConflictException('Duplicated Key');
-      }
-    }
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    const { name, categories, address, date } = createEventDto;
+    const duplicatedEvent = await this.eventModel.findOne({ name });
+    if (duplicatedEvent) throw new ConflictException('Duplicated Key');
+    const event = await this.eventModel.create({
+      name,
+      categories,
+      address,
+      date,
+    });
+    return { statusCode: HttpStatus.CREATED, event: event };
   }
 
   async deleteUnboredEvent(
     eventId: string,
-  ): Promise<{ status: HttpStatus; message: string }> {
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
     if (!Types.ObjectId.isValid(eventId)) {
       throw new NotFoundException('Invalid Id');
     }
@@ -107,37 +107,34 @@ export class EventService {
       throw new NotFoundException('Could not find this event');
     }
     await this.eventModel.deleteOne({ _id: eventId });
-    return { status: HttpStatus.OK, message: 'Succefully deleted !' };
+    return { statusCode: HttpStatus.OK, message: 'Succefully deleted !' };
   }
 
   async editUnboredEvent(
     editEventDto: editEventDto,
     eventId: string,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    const { name } = editEventDto;
     if (!Types.ObjectId.isValid(eventId)) {
       throw new NotFoundException('Invalid Id');
     }
     const findId = await this.eventModel.findById(eventId);
     if (!findId) throw new NotFoundException('Event not existing');
-    try {
-      const event = await this.eventModel.findByIdAndUpdate(
-        eventId,
-        editEventDto,
-        { new: true },
-      );
-      return { status: HttpStatus.OK, event: event };
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new ConflictException('Duplicate Key');
-      }
-    }
+    const duplicatedEvent = await this.eventModel.findOne({ name });
+    if (duplicatedEvent) throw new ConflictException('Duplicated Key');
+    const event = await this.eventModel.findByIdAndUpdate(
+      eventId,
+      editEventDto,
+      { new: true },
+    );
+    return { statusCode: HttpStatus.OK, event: event };
   }
 
   async addUnboredRateEvent(
     eventId: string,
     rateEventDto: rateEventDto,
     userId: string,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
     const newID = new Types.ObjectId();
     if (!Types.ObjectId.isValid(eventId)) {
       throw new NotFoundException('Invalid Id');
@@ -166,13 +163,13 @@ export class EventService {
     if (!updateRate) {
       throw new NotFoundException('Event not found');
     }
-    return { status: HttpStatus.OK, event: updateRate };
+    return { statusCode: HttpStatus.OK, event: updateRate };
   }
 
   async deleteUnboredRate(
     userId: string,
     removeEventRateDto: removeEventRateDto,
-  ): Promise<{ status: HttpStatus; rates: NonNullable<unknown> }> {
+  ): Promise<{ statusCode: HttpStatus; rates: Object }> {
     const hehe1 = await this.userModel.findById(userId);
     const cc = hehe1.rates.find(
       (rate) => rate.idRate.toString() === removeEventRateDto.rateId.toString(),
@@ -191,14 +188,14 @@ export class EventService {
       { _id: cc.event },
       { $pull: { rate: { id: test } } },
     );
-    return { status: HttpStatus.OK, rates: user.rates };
+    return { statusCode: HttpStatus.OK, rates: user.rates };
   }
 
   async uploadUnboredImage(
     userId: string,
     eventId: string,
     file: Express.Multer.File,
-  ): Promise<{ status: HttpStatus; message: string }> {
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
     const pictureForUser = {
       id: file.filename,
       eventId: eventId,
@@ -221,7 +218,7 @@ export class EventService {
         { $addToSet: { pictures: pictureForEvent } },
         { new: true },
       );
-      return { status: HttpStatus.OK, message: 'Image uploaded !' };
+      return { statusCode: HttpStatus.OK, message: 'Image uploaded !' };
     } catch (err) {
       throw new BadRequestException('Bad request');
     }

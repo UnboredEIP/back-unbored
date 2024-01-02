@@ -3,6 +3,7 @@ import {
   UseGuards,
   Post,
   Req,
+  Res,
   Body,
   Get,
   Delete,
@@ -14,7 +15,6 @@ import {
   ParseFilePipe,
   BadRequestException,
 } from '@nestjs/common';
-import fs from 'fs';
 import { JwtGuard } from '../auth/guards/jwt-auth.guard';
 import { AddEventDto } from './dto/AddEvent.dto';
 import { createEventDto } from './dto/CreateEvent.dto';
@@ -26,6 +26,9 @@ import { HttpStatus } from '@nestjs/common';
 import { Events } from './schemas/events.schema';
 import { removeEventRateDto } from './dto/DeleteEventRate.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Param } from '@nestjs/common';
+import { join } from 'path';
+import { Response } from 'express';
 
 @Controller('event')
 export class EventController {
@@ -35,16 +38,18 @@ export class EventController {
   @Get('/')
   async showEvent(
     @Req() req,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
+    res.status(HttpStatus.OK);
     return this.eventService.showEvent(req.user);
   }
 
   @UseGuards(JwtGuard)
   @Get('/lists')
-  async listAllEvent(): Promise<{
-    status: HttpStatus;
-    events: NonNullable<unknown>[];
-  }> {
+  async listAllEvent(
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; events: Object[] }> {
+    res.status(HttpStatus.OK);
     return this.eventService.listAllEvent();
   }
 
@@ -53,7 +58,9 @@ export class EventController {
   async addEvent(
     @Req() req,
     @Body() addEventDto: AddEventDto,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
+    res.status(HttpStatus.OK);
     return this.eventService.addEvent(req.user.id, addEventDto);
   }
 
@@ -62,7 +69,9 @@ export class EventController {
   async deleteEvent(
     @Req() req,
     @Body() deleteEventDto: DeleteEventDto,
-  ): Promise<{ status: HttpStatus; reservations: string[] }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; reservations: string[] }> {
+    res.status(HttpStatus.OK);
     return this.eventService.removeEvent(req.user.id, deleteEventDto);
   }
 
@@ -70,7 +79,9 @@ export class EventController {
   @Get('/show')
   async showDetails(
     @Query('id') id,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    res.status(HttpStatus.OK);
     return this.eventService.getEventById(id);
   }
 
@@ -78,7 +89,9 @@ export class EventController {
   @Post('/createevent')
   async addUnboredEvent(
     @Body() createEventDto: createEventDto,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    res.status(HttpStatus.CREATED);
     return this.eventService.createUnboredEvent(createEventDto);
   }
 
@@ -86,7 +99,9 @@ export class EventController {
   @Delete('/deleteevent')
   async deleteUnboredEvent(
     @Query('id') id,
-  ): Promise<{ status: HttpStatus; message: string }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    res.status(HttpStatus.OK);
     return this.eventService.deleteUnboredEvent(id);
   }
 
@@ -95,7 +110,9 @@ export class EventController {
   async editUnboredEvent(
     @Query('id') id,
     @Body() editEventDto: editEventDto,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    res.status(HttpStatus.OK);
     return this.eventService.editUnboredEvent(editEventDto, id);
   }
 
@@ -105,7 +122,9 @@ export class EventController {
     @Query('id') id,
     @Body() rateEventDto: rateEventDto,
     @Req() req,
-  ): Promise<{ status: HttpStatus; event: Events }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; event: Events }> {
+    res.status(HttpStatus.OK);
     return this.eventService.addUnboredRateEvent(id, rateEventDto, req.user.id);
   }
 
@@ -114,7 +133,9 @@ export class EventController {
   async removeUnboredEventRate(
     @Req() req,
     @Body() removeEventRateDto: removeEventRateDto,
-  ): Promise<{ status: HttpStatus; rates: NonNullable<unknown> }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; rates: Object }> {
+    res.status(HttpStatus.OK);
     return this.eventService.deleteUnboredRate(req.user.id, removeEventRateDto);
   }
 
@@ -130,11 +151,14 @@ export class EventController {
       }),
     )
     file: Express.Multer.File,
+    @Res({ passthrough: true }) res,
   ) {
+    res.status(HttpStatus.OK);
     try {
       console.log(file);
       return await this.eventService.uploadUnboredImage(req.user.id, id, file);
     } catch (err) {
+      const fs = require('fs');
       fs.unlinkSync(file.path);
       throw new BadRequestException('Bad request');
     }

@@ -6,6 +6,7 @@ import { DatabaseService } from './database.service';
 @Module({})
 export class DatabaseModule {
   static forRoot(uri?: string): DynamicModule {
+    // console.log("URI : ",  configService.get<string>('NODE_ENV'));
     return {
       module: DatabaseModule,
       imports: [
@@ -14,7 +15,7 @@ export class DatabaseModule {
             uri:
               configService.get<string>('NODE_ENV') === 'test'
                 ? uri
-                : 'mongodb://mongodb:27017/unbored',
+                : `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_USER_PASS}@mongodb:27017/unbored`,
           }),
           inject: [ConfigService],
         }),

@@ -42,10 +42,12 @@ describe('ProfileController', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
         ProfileModule,
         AuthModule,
-        DatabaseModule.forRoot('mongodb://localhost:27017/unboredProfileEnv'),
-        ConfigModule.forRoot({ isGlobal: true }),
+        DatabaseModule.forRoot(
+          `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_USER_PASS}@localhost:27017/unboredProfileEnv`,
+        ),
       ],
       providers: [{ provide: getModelToken(User.name), useValue: {} }],
     }).compile();
@@ -62,6 +64,30 @@ describe('ProfileController', () => {
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
   }, 10000);
+
+  describe('getAllUsers', () => {
+    beforeEach(async () => {
+      await request(httpServer).post('/auth/register').send(User1);
+      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
+        .body.token;
+      if (bearerUser1 === undefined) {
+        bearerUser1 = (
+          await request(httpServer).post('/auth/login').send(User1)
+        ).body.token;
+      }
+    }, 10000);
+
+    afterEach(async () => {
+      await dbConnection.collection('users').deleteMany({});
+    }, 10000);
+
+    it('should return all users', async () => {
+      const response = await request(httpServer)
+        .get('/profile/all')
+        .set('Authorization', 'Bearer ' + bearerUser1);
+      expect(response.status).toBe(200);
+    });
+  });
 
   describe('getUsers', () => {
     beforeEach(async () => {
@@ -87,12 +113,12 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .get('/profile')
         .set('Authorization', 'Bearer ' + bearerUser1);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(HttpStatus.OK);
     });
 
     it('should send me unauthorized', async () => {
       const response = await request(httpServer).get('/profile');
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
   });
 
@@ -122,14 +148,14 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .post('/profile?id=' + iduser2.body.user._id)
         .set('Authorization', 'Bearer ' + bearerUser2);
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(HttpStatus.OK);
     });
 
     it('should return me an error (invalid id)', async () => {
       const response = await request(httpServer)
         .post('/profile?id=' + 'badId')
         .set('Authorization', 'Bearer ' + bearerUser2);
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(HttpStatus.NOT_FOUND);
     });
   });
 
@@ -167,7 +193,7 @@ describe('ProfileController', () => {
       const userprofile = await request(httpServer)
         .get('/profile')
         .set('Authorization', 'Bearer ' + bearerUser1);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(HttpStatus.OK);
       expect(userprofile.body.user.preferences).toMatchObject(
         updateDto.preferences,
       );
@@ -185,7 +211,7 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .put('/profile/update')
         .send(updateDto);
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
     it('should return me an error (trying to change role)', async () => {
       const updateDto = {
@@ -195,7 +221,7 @@ describe('ProfileController', () => {
         .put('/profile/update')
         .set('Authorization', 'Bearer ' + bearerUser1)
         .send(updateDto);
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
   });
 
@@ -223,11 +249,11 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .get('/profile/avatar')
         .set('Authorization', 'Bearer ' + bearerUser1);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(HttpStatus.OK);
     });
-    it('should return me an error (invalid user)', async () => {
+    it('should return me an error (no bearer token)', async () => {
       const response = await request(httpServer).get('/profile/avatar');
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
 
     /* Avatars */
@@ -236,11 +262,11 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .get('/profile/avatars')
         .set('Authorization', 'Bearer ' + bearerUser1);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(HttpStatus.OK);
     });
-    it('should return me an error (invalid user)', async () => {
+    it('should return me an error (no bearer token)', async () => {
       const response = await request(httpServer).get('/profile/avatars');
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
 
     /* Update avatar */
@@ -260,11 +286,11 @@ describe('ProfileController', () => {
       const userprofile = await request(httpServer)
         .get('/profile/avatar')
         .set('Authorization', 'Bearer ' + bearerUser1);
-      expect(response.status).toBe(201);
+      expect(response.status).toBe(HttpStatus.OK);
       expect(userprofile.body.style).toMatchObject(updateavatardto.style);
     });
 
-    it('should return me an error (invalid user)', async () => {
+    it('should return me an error (no bearer token)', async () => {
       const updateavatardto = {
         style: {
           head: '1',
@@ -276,7 +302,74 @@ describe('ProfileController', () => {
       const response = await request(httpServer)
         .post('/profile/avatar')
         .send(updateavatardto);
-      expect(response.status).toBe(401);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+    });
+  });
+
+  describe('user filters', () => {
+    const User1 = {
+      username: 'IdrissaFall',
+      email: 'testemail@email.com',
+      password: 'password',
+      gender: Gender.HOMME,
+      number: '0606060606',
+      birthdate: new Date('2002-05-05'),
+      preferences: ['basket', 'foot'],
+    };
+
+    const User2 = {
+      username: 'RemiSaleh',
+      email: 'testemail123@email.com',
+      password: 'password',
+      gender: Gender.HOMME,
+      number: '0606060607',
+      birthdate: new Date('2002-05-05'),
+      preferences: ['basket', 'foot'],
+    };
+    beforeEach(async () => {
+      await request(httpServer).post('/auth/register').send(User1);
+      await request(httpServer).post('/auth/register').send(User2);
+      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
+        .body.token;
+      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
+        .body.token;
+      if (bearerUser1 === undefined) {
+        bearerUser1 = (
+          await request(httpServer).post('/auth/login').send(User1)
+        ).body.token;
+      }
+    }, 10000);
+    it('should return me all users', async () => {
+      const response = await request(httpServer)
+        .get('/profile/all')
+        .set('Authorization', 'Bearer ' + bearerUser1);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.users.length).toBe(2);
+      // console.log(response.body.users.size);
+    });
+    it('should return me user1 information', async () => {
+      const response = await request(httpServer)
+        .get('/profile/all?username=Idriss')
+        .set('Authorization', 'Bearer ' + bearerUser1);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.users.length).toBe(1);
+      expect(response.body.users[0].username).toBe(User1.username);
+    });
+    it('should return me user2 information', async () => {
+      const response = await request(httpServer)
+        .get('/profile/all?username=RemiSa')
+        .set('Authorization', 'Bearer ' + bearerUser1);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.users.length).toBe(1);
+      expect(response.body.users[0].username).toBe(User2.username);
+    });
+
+    it('should return me user1 and user2 information', async () => {
+      const response = await request(httpServer)
+        .get('/profile/all?email=testemail')
+        .set('Authorization', 'Bearer ' + bearerUser1);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.users.length).toBe(2);
     });
   });
 });

@@ -24,6 +24,9 @@ export class Events extends Document {
 
   @Prop()
   categories: string[];
+
+  @Prop()
+  date: Date;
 }
 
 export const EventSchema = SchemaFactory.createForClass(Events);

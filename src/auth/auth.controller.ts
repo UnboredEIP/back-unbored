@@ -2,9 +2,11 @@ import {
   Controller,
   Get,
   Post,
+  Query,
   Headers,
   Body,
   Req,
+  Res,
   UseGuards,
   HttpStatus,
 } from '@nestjs/common';
@@ -26,7 +28,9 @@ export class AuthController {
   @Post('/register')
   register(
     @Body() registerDto: RegisterDto,
-  ): Promise<{ status: HttpStatus; message: string }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    res.status(HttpStatus.CREATED);
     return this.authService.register(registerDto);
   }
 
@@ -38,7 +42,9 @@ export class AuthController {
   @Post('/login')
   login(
     @Body() loginDto: LoginDto,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
+    res.status(HttpStatus.ACCEPTED);
     return this.authService.login(loginDto);
   }
 
@@ -55,14 +61,37 @@ export class AuthController {
   refresh(
     @Req() req,
     @Headers() head,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
+    res.status(HttpStatus.ACCEPTED);
     return this.authService.refresh(req.user, head.refresh);
   }
 
   @Post('/login/google')
   loginGoogle(
     @Body() body,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
+    res.status(HttpStatus.ACCEPTED);
     return this.authService.googleLogin(body?.googleTokenId);
+  }
+
+  @Post('/askreset')
+  askResetPassword(
+    @Body() Body,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    res.status(HttpStatus.ACCEPTED);
+    return this.authService.askResetPassword(Body?.email);
+  }
+
+  @Post('/reset')
+  resetPassword(
+    @Body() Body,
+    @Query('id') id,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    res.status(HttpStatus.ACCEPTED);
+    return this.authService.resetPassword(id, Body?.password);
   }
 }

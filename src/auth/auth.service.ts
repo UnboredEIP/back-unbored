@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  NotAcceptableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,10 +13,11 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { HttpStatus } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
+import { ChangePasswordDto } from './dto/changePassword.dto';
+import { MailerService } from '@nestjs-modules/mailer';
+// import { MailerService } from '@nestjs-modules/mailer';
 
-const client = new OAuth2Client(
-  '134575829737-ukmecg47kp10fpg20po5bo5h6k6r30uo.apps.googleusercontent.com',
-);
+const client = new OAuth2Client(process.env.GOOGLE_OAUTH2);
 
 @Injectable()
 export class AuthService {
@@ -23,6 +25,7 @@ export class AuthService {
     @InjectModel(User.name)
     private userModel: Model<User>,
     private jwtService: JwtService,
+    private mailerService: MailerService,
   ) {}
 
   /**
@@ -32,46 +35,48 @@ export class AuthService {
    */
   async register(
     registerDto: RegisterDto,
-  ): Promise<{ status: HttpStatus; message: string }> {
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
     const {
       username,
       email,
       password,
+      description,
       gender,
       number,
       birthdate,
       preferences,
     } = registerDto;
     const hash = await bcrypt.hash(password, 10);
-    try {
-      await this.userModel.create({
-        username,
-        email,
-        gender,
-        role: Role.USER,
-        birthdate,
-        number,
-        password: hash,
-        preferences: preferences,
-        style: {
-          head: '0',
-          body: '0',
-          pants: '0',
-          shoes: '0',
-        },
-        unlockedStyle: {
-          head: ['0'],
-          body: ['0'],
-          pants: ['0'],
-          shoes: ['0'],
-        },
-      });
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new ConflictException('Duplicated key');
-      }
+    const existing = await this.userModel.find({
+      $or: [{ email: email }, { username: username }, { number: number }],
+    });
+    if (existing.length >= 1) {
+      throw new ConflictException('Duplicated key');
     }
-    return { status: HttpStatus.CREATED, message: 'Succesfully created !' };
+    await this.userModel.create({
+      username,
+      email,
+      gender,
+      role: Role.USER,
+      birthdate,
+      number,
+      password: hash,
+      description,
+      preferences: preferences,
+      style: {
+        head: '0',
+        body: '0',
+        pants: '0',
+        shoes: '0',
+      },
+      unlockedStyle: {
+        head: ['0'],
+        body: ['0'],
+        pants: ['0'],
+        shoes: ['0'],
+      },
+    });
+    return { statusCode: HttpStatus.CREATED, message: 'Succesfully created !' };
   }
 
   /**
@@ -82,7 +87,7 @@ export class AuthService {
 
   async login(
     loginDto: LoginDto,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
     const { email, password } = loginDto;
     const user = await this.userModel.findOne({ email });
     if (!user) {
@@ -92,12 +97,28 @@ export class AuthService {
     if (!passwordCheck) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const token = this.jwtService.sign({ id: user._id, role: user.role });
+    const sign = await this.userModel
+      .findOne({ email })
+      .select('-password')
+      .select('-__v')
+      .select('-style')
+      .select('-unlockedStyle')
+      .select('-rates')
+      .select('-pictures')
+      .select('-groups')
+      .select('-invitations')
+      .select('-reservations');
+
+    const token = this.jwtService.sign({ users: sign });
     const refreshToken = this.jwtService.sign(
-      { id: user._id, role: user.role },
-      { expiresIn: '90d', secret: '123456' },
+      { users: sign },
+      { expiresIn: '90d', secret: process.env.JWT_REFRESH },
     );
-    return { status: HttpStatus.ACCEPTED, token: token, refresh: refreshToken };
+    return {
+      statusCode: HttpStatus.ACCEPTED,
+      token: token,
+      refresh: refreshToken,
+    };
   }
 
   /**
@@ -109,17 +130,29 @@ export class AuthService {
   async refresh(
     user: User,
     actualRefresh: string,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
+    const sign = await this.userModel
+      .findById(user.id)
+      .select('-password')
+      .select('-__v')
+      .select('-style')
+      .select('-unlockedStyle')
+      .select('-rates')
+      .select('-pictures')
+      .select('-groups')
+      .select('-invitations')
+      .select('-reservations');
+
     return {
-      status: HttpStatus.ACCEPTED,
-      token: this.jwtService.sign({ id: user._id }),
+      statusCode: HttpStatus.ACCEPTED,
+      token: this.jwtService.sign({ users: sign }),
       refresh: actualRefresh,
     };
   }
 
   async googleLogin(
     tokenId: string,
-  ): Promise<{ status: HttpStatus; token: string; refresh: string }> {
+  ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
     console.log(tokenId);
     const ticket = await client.verifyIdToken({
       idToken: tokenId,
@@ -137,7 +170,8 @@ export class AuthService {
     if (!user) {
       user = await this.userModel.create({
         email: email,
-        password: email + 'asdsdsddsds',
+        password: email + process.env.GOOGLE_PWD_CONFIG,
+        description: '',
         style: {
           head: '0',
           body: '0',
@@ -156,8 +190,64 @@ export class AuthService {
     const token = this.jwtService.sign({ id: user._id, role: user.role });
     const refreshToken = this.jwtService.sign(
       { id: user._id, role: user.role },
-      { expiresIn: '90d', secret: '123456' },
+      { expiresIn: '90d', secret: process.env.JWT_REFRESH },
     );
-    return { status: HttpStatus.ACCEPTED, token: token, refresh: refreshToken };
+    return {
+      statusCode: HttpStatus.ACCEPTED,
+      token: token,
+      refresh: refreshToken,
+    };
+  }
+
+  async askResetPassword(
+    email: string,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const token = this.jwtService.sign(
+      { email: email },
+      { expiresIn: '5min', secret: process.env.RESET_PASSWORD_SECRET },
+    );
+    const userExists = this.userModel.findOne({ email: email });
+    if (!userExists) {
+      return {
+        statusCode: HttpStatus.ACCEPTED,
+        message: 'If account exists mail will be sent',
+      };
+    }
+    console.log(process.env.UNBORED_MAIL);
+    console.log(process.env.UNBORED_PASSWORD);
+    const emailContent = {
+      to: email,
+      subject: 'Mot de passe oublié',
+      text: '',
+      html: `
+            <div>
+                <a>Vous pouvez reinitialiser votre mot de passe en utilisant ce lien : <a href="http://${process.env.URLFRONT}/forgot-password?id=${token}"> Reinitialiser  </a></a>
+            </div>`,
+    };
+    await this.mailerService.sendMail(emailContent);
+    console.log(token);
+    return {
+      statusCode: HttpStatus.ACCEPTED,
+      message: 'If account exists mail will be sent',
+    };
+  }
+
+  async resetPassword(
+    tokenId: string,
+    password: string,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    try {
+      const decodedToken = this.jwtService.verify(tokenId, {
+        secret: process.env.RESET_PASSWORD_SECRET,
+      });
+      const hash = await bcrypt.hash(password, 10);
+      await this.userModel.findOneAndUpdate(
+        { email: decodedToken.email },
+        { password: hash },
+      );
+    } catch (error) {
+      throw new NotAcceptableException('Expired');
+    }
+    return { statusCode: HttpStatus.ACCEPTED, message: 'Password Changed' };
   }
 }

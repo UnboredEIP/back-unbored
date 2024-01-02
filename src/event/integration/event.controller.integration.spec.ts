@@ -9,9 +9,6 @@ import { EventModule } from '../event.module';
 import { AuthModule } from '../../auth/auth.module';
 import { DatabaseModule } from '../../database/database.module';
 import { ConfigModule } from '@nestjs/config';
-import { AddEventDto } from '../dto/AddEvent.dto';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule, JwtService } from '@nestjs/jwt';
 
 const User1 = {
   username: 'testusernameevent',
@@ -43,10 +40,12 @@ describe('EventController', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
         EventModule,
         AuthModule,
-        DatabaseModule.forRoot('mongodb://localhost:27017/unboredEventEnv'),
-        ConfigModule.forRoot({ isGlobal: true }),
+        DatabaseModule.forRoot(
+          `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_USER_PASS}@localhost:27017/unboredEventEnv`,
+        ),
       ],
       providers: [{ provide: getModelToken(User.name), useValue: {} }],
     }).compile();
@@ -94,6 +93,7 @@ describe('EventController', () => {
         .post('/event/add')
         .set('Authorization', 'Bearer ' + eventUserBearer)
         .send({ events: ['123', '123', 'dsqdqs', 'mddd'] });
+      expect(response.status).toBe(HttpStatus.OK);
       expect(response.body.reservations).toMatchObject(events);
     });
     it('should return me user1 reservations', async () => {
@@ -138,6 +138,7 @@ describe('EventController', () => {
         .get('/event/show?id=' + create.body.event._id)
         .set('Authorization', 'Bearer ' + eventUserBearer);
       expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body);
     });
 
     it('should not return me an event (bad id)', async () => {
@@ -301,7 +302,7 @@ describe('EventController', () => {
         .set('Authorization', 'Bearer ' + eventUserBearer)
         .send(rateEventDto);
       expect(response.body.event.rate[0]).toMatchObject(rateEventDto);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.status).toBe(HttpStatus.OK);
     });
 
     it('should return me an error (invalid id)', async () => {
@@ -334,7 +335,7 @@ describe('EventController', () => {
         .set('Authorization', 'Bearer ' + eventUserBearer)
         .send({ rateId: rateId.body.event.rate[0].id });
       expect(response.body.rates).toMatchObject([]);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.status).toBe(HttpStatus.OK);
     });
 
     it('should return me an error (Not existing rate id)', async () => {

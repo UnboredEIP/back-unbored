@@ -22,6 +22,10 @@ export class RegisterDto {
   @IsEnum(Gender, { message: 'Please enter a correct gender' })
   readonly gender: Gender;
 
+  @IsString()
+  @IsOptional()
+  readonly description: string;
+
   @IsNotEmpty()
   @IsString()
   readonly number: string;

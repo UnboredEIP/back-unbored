@@ -40,10 +40,12 @@ describe('EventController', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
+        ConfigModule.forRoot({ isGlobal: true }),
         GroupModule,
         AuthModule,
-        DatabaseModule.forRoot('mongodb://localhost:27017/unboredGroupEnv'),
-        ConfigModule.forRoot({ isGlobal: true }),
+        DatabaseModule.forRoot(
+          `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_USER_PASS}@localhost:27017/unboredGroupEnv`,
+        ),
       ],
       providers: [{ provide: getModelToken(User.name), useValue: {} }],
     }).compile();

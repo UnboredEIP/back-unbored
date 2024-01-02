@@ -23,6 +23,12 @@ export class User extends Document {
   @Prop()
   password: string;
 
+  @Prop({ required: false })
+  profilPhoto: string;
+
+  @Prop({ required: false })
+  description: string;
+
   @Prop()
   role: string;
 

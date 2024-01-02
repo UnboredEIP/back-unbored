@@ -22,13 +22,13 @@ export class GroupService {
 
   async showGroups(
     user: User,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown>[] }> {
+  ): Promise<{ status: HttpStatus; groups: Object[] }> {
     return { status: HttpStatus.OK, groups: user.groups };
   }
 
   async showGroupWithId(
     id: string,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown> }> {
+  ): Promise<{ status: HttpStatus; groups: Object }> {
     const group = await this.groupModel.findById(id);
     if (!group) throw new NotFoundException('Group not found');
     return { status: HttpStatus.OK, groups: group };
@@ -36,7 +36,7 @@ export class GroupService {
 
   async showInvitation(
     user: User,
-  ): Promise<{ status: HttpStatus; invitations: NonNullable<unknown>[] }> {
+  ): Promise<{ status: HttpStatus; invitations: Object[] }> {
     return { status: HttpStatus.OK, invitations: user.invitations };
   }
 
