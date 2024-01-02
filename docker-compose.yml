@@ -14,9 +14,9 @@ services:
     env_file:
       - ./docker.env
     environment:
-        MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN}
-        MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_PASS}
-        MONGO_INITDB_DATABASE: admin
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_PASS}
+      MONGO_INITDB_DATABASE: admin
 
   server:
     build:
