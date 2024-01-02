@@ -47,14 +47,14 @@ jobs:
         run: |
           echo "$DOCKER_ENV_FILE" > docker.env
           echo "$DOCKER_SERVER_ENV_FILE" > .env
-          docker compose run -d mongodb
+          docker compose up -d mongodb
           docker compose ps
+      - name: Wait for MongoDB to start
+        run: docker compose exec mongodb sh -c 'until mongo --eval "print(\"waited for connection\")"; do sleep 1; done'
         env:
           MONGO_ADMIN: ${{ secrets.MONGO_ADMIN }}
           MONGO_ADMIN_PASS: ${{ secrets.MONGO_ADMIN_PASS }}
           DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
-      - name: Wait for MongoDB to start
-        run: docker compose exec mongodb sh -c 'until mongo --eval "print(\"waited for connection\")"; do sleep 1; done'
       - name: Build the Docker image
         run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
       - name: Run tests
