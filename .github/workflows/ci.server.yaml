@@ -32,8 +32,7 @@ jobs:
         run: docker run $IMAGE_TAG_SERVER sh -c 'npm run lint:verify'
   test_and_analyze:
     env:
-      MONGO_ADMIN: ${{ secrets.MONGO_ADMIN }}
-      MONGO_ADMIN_PASS: ${{ secrets.MONGO_ADMIN_PASS }}
+      DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
       DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
     name: Server - Test and Analyze
     runs-on: ubuntu-latest
@@ -44,17 +43,16 @@ jobs:
           fetch-depth: 0
       - name: Set up Docker Compose
         run: |
+          echo "$DOCKER_ENV_FILE" > docker.env
+          echo "$DOCKER_SERVER_ENV_FILE" > .env
           docker compose run -d mongodb
           docker compose ps
         env:
-          MONGO_ADMIN: ${{ secrets.MONGO_ADMIN }}
-          MONGO_ADMIN_PASS: ${{ secrets.MONGO_ADMIN_PASS }}
+          DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
       - name: Wait for MongoDB to start
         run: docker compose exec mongodb sh -c 'until mongo --eval "print(\"waited for connection\")"; do sleep 1; done'
       - name: Build the Docker image
         run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
-      - name: Set up environment variables for server
-        run: echo "$DOCKER_SERVER_ENV_FILE" > .env
       - name: Run tests
         run: docker run -v ./coverage:/user/src/app/server/coverage $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
       - name: SonarCloud Scan
