@@ -29,6 +29,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Param } from '@nestjs/common';
 import { join } from 'path';
 import { Response } from 'express';
+import fs from 'fs';
 
 @Controller('event')
 export class EventController {
@@ -48,7 +49,7 @@ export class EventController {
   @Get('/lists')
   async listAllEvent(
     @Res({ passthrough: true }) res,
-  ): Promise<{ statusCode: HttpStatus; events: Object[] }> {
+  ): Promise<{ statusCode: HttpStatus; events: NonNullable<unknown>[] }> {
     res.status(HttpStatus.OK);
     return this.eventService.listAllEvent();
   }
@@ -134,7 +135,7 @@ export class EventController {
     @Req() req,
     @Body() removeEventRateDto: removeEventRateDto,
     @Res({ passthrough: true }) res,
-  ): Promise<{ statusCode: HttpStatus; rates: Object }> {
+  ): Promise<{ statusCode: HttpStatus; rates: NonNullable<unknown> }> {
     res.status(HttpStatus.OK);
     return this.eventService.deleteUnboredRate(req.user.id, removeEventRateDto);
   }
@@ -158,7 +159,6 @@ export class EventController {
       console.log(file);
       return await this.eventService.uploadUnboredImage(req.user.id, id, file);
     } catch (err) {
-      const fs = require('fs');
       fs.unlinkSync(file.path);
       throw new BadRequestException('Bad request');
     }

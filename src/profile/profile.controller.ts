@@ -22,6 +22,7 @@ import { User } from 'src/auth/schemas/user.schema';
 import { HttpStatus } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { QueryUsersDto } from './dto/queryUsers.dto';
+import fs from 'fs';
 
 @Controller('profile')
 export class ProfileController {
@@ -73,7 +74,7 @@ export class ProfileController {
   async avatar(
     @Req() req,
     @Res({ passthrough: true }) res,
-  ): Promise<{ status: HttpStatus; style: Object }> {
+  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
     res.status(HttpStatus.OK);
     return this.profileService.UserActualAvatar(req.user);
   }
@@ -83,7 +84,7 @@ export class ProfileController {
   async avatars(
     @Req() req,
     @Res({ passthrough: true }) res,
-  ): Promise<{ status: HttpStatus; unlockedStyles: Object }> {
+  ): Promise<{ status: HttpStatus; unlockedStyles: NonNullable<unknown> }> {
     res.status(HttpStatus.OK);
     return this.profileService.UserAvatars(req.user);
   }
@@ -94,7 +95,7 @@ export class ProfileController {
     @Req() req,
     @Body() updateAvatarDto: UpdateAvatarDto,
     @Res({ passthrough: true }) res,
-  ): Promise<{ status: HttpStatus; style: Object }> {
+  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
     res.status(HttpStatus.OK);
     return this.profileService.ChangeAvatar(req.user.id, updateAvatarDto);
   }
@@ -118,7 +119,6 @@ export class ProfileController {
       return await this.profileService.uploadProfilePicture(req.user.id, file);
       // return await this.eventService.uploadUnboredImage(req.user.id, id, file)
     } catch (err) {
-      const fs = require('fs');
       fs.unlinkSync(file.path);
       throw new BadRequestException('Bad request');
     }

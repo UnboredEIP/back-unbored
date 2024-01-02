@@ -82,26 +82,29 @@ export class ProfileService {
 
   async UserActualAvatar(
     user: User,
-  ): Promise<{ status: HttpStatus; style: Object }> {
-    return { status: HttpStatus.OK, style: user.style as Object };
+  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
+    return { status: HttpStatus.OK, style: user.style as NonNullable<unknown> };
   }
 
   async UserAvatars(
     user: User,
-  ): Promise<{ status: HttpStatus; unlockedStyles: Object }> {
+  ): Promise<{ status: HttpStatus; unlockedStyles: NonNullable<unknown> }> {
     return { status: HttpStatus.OK, unlockedStyles: user.unlockedStyle };
   }
 
   async ChangeAvatar(
     id: string,
     updateAvatarDto: UpdateAvatarDto,
-  ): Promise<{ status: HttpStatus; style: Object }> {
+  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
     const avatarUpdate = await this.userModel.findByIdAndUpdate(
       id,
       { $set: updateAvatarDto },
       { new: true },
     );
-    return { status: HttpStatus.OK, style: avatarUpdate.style as Object };
+    return {
+      status: HttpStatus.OK,
+      style: avatarUpdate.style as NonNullable<unknown>,
+    };
   }
 
   async uploadProfilePicture(

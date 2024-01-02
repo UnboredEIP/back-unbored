@@ -33,7 +33,10 @@ export class EventService {
     return { statusCode: HttpStatus.OK, reservations: user.reservations };
   }
 
-  async listAllEvent(): Promise<{ statusCode: HttpStatus; events: Object[] }> {
+  async listAllEvent(): Promise<{
+    statusCode: HttpStatus;
+    events: NonNullable<unknown>[];
+  }> {
     const Events = await this.eventModel.find();
     return { statusCode: HttpStatus.OK, events: Events };
   }
@@ -169,7 +172,7 @@ export class EventService {
   async deleteUnboredRate(
     userId: string,
     removeEventRateDto: removeEventRateDto,
-  ): Promise<{ statusCode: HttpStatus; rates: Object }> {
+  ): Promise<{ statusCode: HttpStatus; rates: NonNullable<unknown> }> {
     const hehe1 = await this.userModel.findById(userId);
     const cc = hehe1.rates.find(
       (rate) => rate.idRate.toString() === removeEventRateDto.rateId.toString(),
