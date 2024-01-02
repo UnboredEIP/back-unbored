@@ -48,7 +48,7 @@ jobs:
           DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
           DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
       - name: Run tests
-        run: docker compose exec $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
+        run: docker compose exec $IMAGE_TAG_SERVER npm run test:cov
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
