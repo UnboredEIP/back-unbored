@@ -31,11 +31,6 @@ jobs:
       - name: Run ESLint
         run: docker run $IMAGE_TAG_SERVER sh -c 'npm run lint:verify'
   test_and_analyze:
-    env:
-      MONGO_ADMIN: ${{ secrets.MONGO_ADMIN }}
-      MONGO_ADMIN_PASS: ${{ secrets.MONGO_ADMIN_PASS }}
-      DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
-      DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
     name: Server - Test and Analyze
     runs-on: ubuntu-latest
     steps:
@@ -47,12 +42,13 @@ jobs:
         run: |
           echo "$DOCKER_ENV_FILE" > docker.env
           echo "$DOCKER_SERVER_ENV_FILE" > .env
-          docker compose up -d mongodb
+          docker compose up -d
           docker compose ps
-      - name: Build the Docker image
-        run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
+        env:
+          DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
+          DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
       - name: Run tests
-        run: docker run -v ./coverage:/user/src/app/server/coverage $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
+        run: docker compose exec $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
