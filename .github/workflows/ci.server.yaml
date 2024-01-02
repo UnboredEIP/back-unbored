@@ -48,9 +48,11 @@ jobs:
       - name: Set up MongoDB
         run: |
           echo "$DOCKER_ENV_FILE" > docker.env
+          echo "$DOCKER_SERVER_ENV_FILE" > .env
           docker compose up -d $IMAGE_TAG_MONGODB
         env:
           DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
+          DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
       - name: Build
         run: npm run build
       - name: Run tests
