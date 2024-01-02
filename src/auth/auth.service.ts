@@ -207,7 +207,7 @@ export class AuthService {
       { expiresIn: '5min', secret: process.env.RESET_PASSWORD_SECRET },
     );
     const userExists = this.userModel.findOne({ email: email });
-    if (!userExists) {
+    if (await !userExists) {
       return {
         statusCode: HttpStatus.ACCEPTED,
         message: 'If account exists mail will be sent',

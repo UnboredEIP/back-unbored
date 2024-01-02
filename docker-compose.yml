@@ -26,7 +26,6 @@ services:
     volumes:
       - ./src:/user/src/app/server/src
       - images_data:/user/src/app/server/data/images
-      # - ./coverage:/user/src/app/server/coverage
     depends_on:
       - mongodb
     env_file:
