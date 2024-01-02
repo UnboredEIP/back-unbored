@@ -47,7 +47,7 @@ jobs:
         run: npm ci
       - name: Set up MongoDB
         run: |
-          echo "$DOCKER_ENV_FILE" > .env
+          echo "$DOCKER_ENV_FILE" > docker.env
           docker compose up -d $IMAGE_TAG_MONGODB
         env:
           DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
