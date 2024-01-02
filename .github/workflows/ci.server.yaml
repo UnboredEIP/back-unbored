@@ -34,6 +34,17 @@ jobs:
   test_and_analyze:
     name: Server - Test and Analyze
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6.0.3
+        env:
+          MONGO_INITDB_ROOT_USERNAME: ${{ secrets.MONGO_ADMIN }}
+          MONGO_INITDB_ROOT_PASSWORD: ${{ secrets.MONGO_ADMIN_PASS }}
+          MONDODB_INITDB_DATABASE: admin
+        ports:
+          - 27017:27017
+        volumes:
+          - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
