@@ -80,6 +80,7 @@ describe('EventController', () => {
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
     await dbConnection.collection('groups').deleteMany({});
+    await app.close();
   }, 10000);
 
   describe('user groups', () => {

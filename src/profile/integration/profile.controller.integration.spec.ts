@@ -63,6 +63,7 @@ describe('ProfileController', () => {
 
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
+    await app.close();
   }, 10000);
 
   describe('getAllUsers', () => {

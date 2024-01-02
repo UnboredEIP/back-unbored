@@ -51,6 +51,7 @@ describe('AuthController', () => {
 
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
+    await app.close();
   });
 
   describe('registration', () => {
