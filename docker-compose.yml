@@ -11,8 +11,10 @@ services:
       - mongodb:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
     command: mongod --quiet --logpath /dev/null
-    env_file:
-      - ./docker.env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_PASS}
+      MONGO_INITDB_DATABASE: admin
 
   server:
     build:
@@ -26,7 +28,7 @@ services:
     volumes:
       - ./src:/user/src/app/server/src
       - images_data:/user/src/app/server/data/images
-      - ./coverage:/user/src/app/server/coverage
+      # - ./coverage:/user/src/app/server/coverage
     depends_on:
       - mongodb
     env_file:
