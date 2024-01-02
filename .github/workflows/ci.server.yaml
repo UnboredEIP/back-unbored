@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Set up MongoDB
+      - name: Set up Docker Compose
         run: |
           echo "$DOCKER_ENV_FILE" > docker.env
           echo "$DOCKER_SERVER_ENV_FILE" > .env
@@ -47,10 +47,8 @@ jobs:
         env:
           DOCKER_ENV_FILE: ${{ secrets.DOCKER_ENV_FILE }}
           DOCKER_SERVER_ENV_FILE: ${{ secrets.DOCKER_SERVER_ENV_FILE }}
-      - name: Build the Docker image
-        run: docker build -t $IMAGE_TAG_SERVER --target=create-build .
       - name: Run tests
-        run: docker run -v ./coverage:/user/src/app/server/coverage $IMAGE_TAG_SERVER sh -c 'npm run test:cov'
+        run: docker compose exec $IMAGE_TAG_SERVER npm run test:cov
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
