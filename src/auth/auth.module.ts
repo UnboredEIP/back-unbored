@@ -6,27 +6,35 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserSchema } from './schemas/user.schema';
 import { RefreshStrategy } from './strategies/refresh.strategy';
-import { DatabaseModule } from '../database/database.module';
-import { ConfigModule } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
-    imports: [
-        PassportModule.register({defaultStrategy: 'jwt'}),
-        JwtModule.registerAsync({
-            useFactory: () => {
-                return {
-                    secret: "123456",
-                    signOptions: {
-                        expiresIn: "3d"
-                    },
-                };
-            }
-        }),
-        MongooseModule.forFeature([{name: 'User', schema: UserSchema}]),
-    ],
-    controllers: [AuthController],
-    providers: [AuthService, JwtStrategy, RefreshStrategy],
+  imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    JwtModule.registerAsync({
+      useFactory: () => {
+        return {
+          secret: process.env.JWT_TOKEN,
+          signOptions: {
+            expiresIn: '3d',
+          },
+        };
+      },
+    }),
+    MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
+    MailerModule.forRoot({
+      transport: {
+        host: 'smtp.gmail.com',
+        port: 587,
+        auth: {
+          user: process.env.UNBORED_MAIL,
+          pass: process.env.UNBORED_PASSWORD,
+        },
+      },
+    }),
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, JwtStrategy, RefreshStrategy],
 })
-
 export class AuthModule {}

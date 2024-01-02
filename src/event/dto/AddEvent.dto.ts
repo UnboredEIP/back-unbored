@@ -1,7 +1,7 @@
-import { IsArray, ArrayMinSize } from "class-validator";
+import { IsArray, ArrayMinSize } from 'class-validator';
 
 export class AddEventDto {
-    @IsArray()
-    @ArrayMinSize(1)
-    readonly events: string[];
+  @IsArray()
+  @ArrayMinSize(1)
+  readonly events: string[];
 }

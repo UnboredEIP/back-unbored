@@ -8,11 +8,16 @@ import { DatabaseModule } from './database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { GroupModule } from './group/group.module';
 
-
 @Module({
-  imports: [AuthModule, ProfileModule, EventModule, GroupModule, DatabaseModule.forRoot(""), ConfigModule.forRoot({ isGlobal: true})],
+  imports: [
+    AuthModule,
+    ProfileModule,
+    EventModule,
+    GroupModule,
+    DatabaseModule.forRoot(''),
+    ConfigModule.forRoot({ isGlobal: true }),
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
-
 export class AppModule {}

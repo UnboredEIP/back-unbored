@@ -6,9 +6,8 @@ import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 
 @Module({
-    imports:[MongooseModule.forFeature([{ name : 'User', schema: UserSchema}])],
-    controllers: [ProfileController],
-    providers: [ProfileService, JwtStrategy],
+  imports: [MongooseModule.forFeature([{ name: 'User', schema: UserSchema }])],
+  controllers: [ProfileController],
+  providers: [ProfileService, JwtStrategy],
 })
-
 export class ProfileModule {}
