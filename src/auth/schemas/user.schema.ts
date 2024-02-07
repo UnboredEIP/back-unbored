@@ -88,7 +88,9 @@ export class User extends Document {
     _id: string;
     createdAt: Date;
   }[];
+
+  @Prop([String])
+  favorites: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-// UserSchema.index({'invitations.createdAt': 1}, {expireAfterSeconds: 60});

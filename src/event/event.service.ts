@@ -226,4 +226,41 @@ export class EventService {
       throw new BadRequestException('Bad request');
     }
   }
+
+  async addEventToFavorites(
+    userId: string,
+    eventId: string,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    if (!Types.ObjectId.isValid(eventId)) {
+      throw new NotFoundException('Invalid Id');
+    }
+    const user = await this.userModel.findByIdAndUpdate(
+      { _id: userId },
+      { $addToSet: { favorites: eventId } },
+      { new: true },
+    );
+    return { statusCode: HttpStatus.OK, favorites: user.favorites };
+  }
+
+  async removeEventFromFavorites(
+    userId: string,
+    eventId: string,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    if (!Types.ObjectId.isValid(eventId)) {
+      throw new NotFoundException('Invalid Id');
+    }
+    const user = await this.userModel.findByIdAndUpdate(
+      { _id: userId },
+      { $pull: { favorites: eventId } },
+      { new: true },
+    );
+    return { statusCode: HttpStatus.OK, favorites: user.favorites };
+  }
+
+  async listFavorites(
+    userId: string,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    const user = await this.userModel.findById(userId);
+    return { statusCode: HttpStatus.OK, favorites: user.favorites };
+  }
 }
