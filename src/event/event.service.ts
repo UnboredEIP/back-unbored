@@ -234,6 +234,10 @@ export class EventService {
     if (!Types.ObjectId.isValid(eventId)) {
       throw new NotFoundException('Invalid Id');
     }
+    const event = await this.eventModel.findById(eventId);
+    if (!event) {
+      throw new NotFoundException('Invalid Id');
+    }
     const user = await this.userModel.findByIdAndUpdate(
       { _id: userId },
       { $addToSet: { favorites: eventId } },
@@ -247,6 +251,10 @@ export class EventService {
     eventId: string,
   ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
     if (!Types.ObjectId.isValid(eventId)) {
+      throw new NotFoundException('Invalid Id');
+    }
+    const event = await this.eventModel.findById(eventId);
+    if (!event) {
       throw new NotFoundException('Invalid Id');
     }
     const user = await this.userModel.findByIdAndUpdate(

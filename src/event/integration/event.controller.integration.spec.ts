@@ -347,4 +347,66 @@ describe('EventController', () => {
       expect(response.status).toBe(HttpStatus.NOT_FOUND);
     });
   });
+
+  describe('favorites', () => {
+    const createEventDto = {
+      name: 'testevent',
+      address: 'test event 93300',
+      categories: ['test', 'test2'],
+    };
+
+    it('should add event to user favorites', async () => {
+      const eventRes = await request(httpServer)
+        .post('/event/createevent')
+        .set('Authorization', 'Bearer ' + eventUserBearer)
+        .send(createEventDto);
+      const eventId = eventRes.body.event._id;
+      const response = await request(httpServer)
+        .post('/event/favorites?id=' + eventId)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.favorites).toMatchObject([eventId]);
+    });
+
+    it('should return me an error (invalid id)', async () => {
+      const response = await request(httpServer)
+        .post('/event/favorites?id=badId')
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response.status).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('should return me an error (not existing id)', async () => {
+      const badId = new Types.ObjectId();
+      const response = await request(httpServer)
+        .post('/event/favorites?id=' + badId._id)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response.status).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('should delete event from user favorites', async () => {
+      const eventRes = await request(httpServer)
+        .post('/event/createevent')
+        .set('Authorization', 'Bearer ' + eventUserBearer)
+        .send(createEventDto);
+      const eventId = eventRes.body.event._id;
+      const response_1 = await request(httpServer)
+        .post('/event/favorites?id=' + eventId)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response_1.status).toBe(HttpStatus.OK);
+      expect(response_1.body.favorites).toMatchObject([eventId]);
+      const response_2 = await request(httpServer)
+        .delete('/event/favorites?id=' + eventId)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response_2.status).toBe(HttpStatus.OK);
+      expect(response_2.body.favorites).toMatchObject([]);
+    });
+
+    it('should return me an error (not existing id)', async () => {
+      const badId = new Types.ObjectId();
+      const response = await request(httpServer)
+        .delete('/event/favorites?id=' + badId._id)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response.status).toBe(HttpStatus.NOT_FOUND);
+    });
+  });
 });
