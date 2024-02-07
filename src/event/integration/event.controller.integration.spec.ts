@@ -9,6 +9,7 @@ import { EventModule } from '../event.module';
 import { AuthModule } from '../../auth/auth.module';
 import { DatabaseModule } from '../../database/database.module';
 import { ConfigModule } from '@nestjs/config';
+import e from 'express';
 
 const User1 = {
   username: 'testusernameevent',
@@ -407,6 +408,19 @@ describe('EventController', () => {
         .delete('/event/favorites?id=' + badId._id)
         .set('Authorization', 'Bearer ' + eventUserBearer);
       expect(response.status).toBe(HttpStatus.NOT_FOUND);
+    });
+
+    it('should return me user favorites', async () => {
+      const eventRes = await request(httpServer)
+        .post('/event/createevent')
+        .set('Authorization', 'Bearer ' + eventUserBearer)
+        .send(createEventDto);
+      const eventId = eventRes.body.event._id;
+      const response = await request(httpServer)
+        .get('/event/favorites')
+        .set('Authorization', 'Bearer ' + eventUserBearer);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.favorites).toMatchObject([eventId]);
     });
   });
 });
