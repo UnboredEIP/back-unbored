@@ -253,7 +253,7 @@ describe('ProfileController', () => {
       expect(response.status).toBe(HttpStatus.OK);
     });
     it('should return me an error (no bearer token)', async () => {
-      const response = await request(httpServer).get('/profile/avatar');
+      const response = await request(httpServer).post('/profile/avatar');
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
 
