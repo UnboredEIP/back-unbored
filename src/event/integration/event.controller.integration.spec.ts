@@ -9,7 +9,6 @@ import { EventModule } from '../event.module';
 import { AuthModule } from '../../auth/auth.module';
 import { DatabaseModule } from '../../database/database.module';
 import { ConfigModule } from '@nestjs/config';
-import e from 'express';
 
 const User1 = {
   username: 'testusernameevent',
