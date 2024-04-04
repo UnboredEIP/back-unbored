@@ -76,7 +76,10 @@ export class AuthService {
         shoes: ['0'],
       },
     });
-    return { statusCode: HttpStatus.CREATED, message: 'Succesfully created !' };
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Successfully created !',
+    };
   }
 
   /**

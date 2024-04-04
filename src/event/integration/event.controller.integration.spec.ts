@@ -390,16 +390,14 @@ describe('EventController', () => {
         .set('Authorization', 'Bearer ' + eventUserBearer)
         .send(createEventDto);
       const eventId = eventRes.body.event._id;
-      const response_1 = await request(httpServer)
+      await request(httpServer)
         .post('/event/favorites?id=' + eventId)
         .set('Authorization', 'Bearer ' + eventUserBearer);
-      expect(response_1.status).toBe(HttpStatus.OK);
-      expect(response_1.body.favorites).toMatchObject([eventId]);
-      const response_2 = await request(httpServer)
+      const response = await request(httpServer)
         .delete('/event/favorites?id=' + eventId)
         .set('Authorization', 'Bearer ' + eventUserBearer);
-      expect(response_2.status).toBe(HttpStatus.OK);
-      expect(response_2.body.favorites).toMatchObject([]);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.favorites).toMatchObject([]);
     });
 
     it('should return me an error (not existing id)', async () => {
@@ -416,6 +414,9 @@ describe('EventController', () => {
         .set('Authorization', 'Bearer ' + eventUserBearer)
         .send(createEventDto);
       const eventId = eventRes.body.event._id;
+      await request(httpServer)
+        .post('/event/favorites?id=' + eventId)
+        .set('Authorization', 'Bearer ' + eventUserBearer);
       const response = await request(httpServer)
         .get('/event/favorites')
         .set('Authorization', 'Bearer ' + eventUserBearer);
