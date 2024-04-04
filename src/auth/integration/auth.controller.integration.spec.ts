@@ -59,7 +59,7 @@ describe('AuthController', () => {
       const response = await request(httpServer)
         .post('/auth/register')
         .send(User1);
-      expect(response.body.message).toMatch('Succesfully created !');
+      expect(response.body.message).toMatch('Successfully created !');
       expect(response.status).toBe(HttpStatus.CREATED);
     });
     it('should not register an account (duplicate key)', async () => {

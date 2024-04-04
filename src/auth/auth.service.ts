@@ -76,7 +76,10 @@ export class AuthService {
         shoes: ['0'],
       },
     });
-    return { statusCode: HttpStatus.CREATED, message: 'Succesfully created !' };
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Successfully created !',
+    };
   }
 
   /**
@@ -107,7 +110,8 @@ export class AuthService {
       .select('-pictures')
       .select('-groups')
       .select('-invitations')
-      .select('-reservations');
+      .select('-reservations')
+      .select('-favorites');
 
     const token = this.jwtService.sign({ users: sign });
     const refreshToken = this.jwtService.sign(
@@ -141,7 +145,8 @@ export class AuthService {
       .select('-pictures')
       .select('-groups')
       .select('-invitations')
-      .select('-reservations');
+      .select('-reservations')
+      .select('-favorites');
 
     return {
       statusCode: HttpStatus.ACCEPTED,

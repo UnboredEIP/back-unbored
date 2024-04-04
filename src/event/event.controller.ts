@@ -163,4 +163,36 @@ export class EventController {
       throw new BadRequestException('Bad request');
     }
   }
+
+  @UseGuards(JwtGuard)
+  @Post('/favorites')
+  async addEventToFavorites(
+    @Query('id') id,
+    @Req() req,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    res.status(HttpStatus.OK);
+    return await this.eventService.addEventToFavorites(req.user.id, id);
+  }
+
+  @UseGuards(JwtGuard)
+  @Delete('/favorites')
+  async removeEventFromFavorites(
+    @Query('id') id,
+    @Req() req,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    res.status(HttpStatus.OK);
+    return await this.eventService.removeEventFromFavorites(req.user.id, id);
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('/favorites')
+  async listFavorites(
+    @Req() req,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; favorites: string[] }> {
+    res.status(HttpStatus.OK);
+    return await this.eventService.listFavorites(req.user.id);
+  }
 }
