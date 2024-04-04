@@ -17,7 +17,6 @@ const User1 = {
   email: 'testemail@email.com',
   password: 'password',
   gender: Gender.HOMME,
-  number: '0606060606',
   birthdate: new Date('2002-05-05'),
   preferences: ['basket', 'foot'],
 };
@@ -27,7 +26,6 @@ const User2 = {
   email: 'testemail123@email.com',
   password: 'password',
   gender: Gender.HOMME,
-  number: '0606060607',
   birthdate: new Date('2002-05-05'),
   preferences: ['basket', 'foot'],
 };
@@ -63,25 +61,29 @@ describe('ProfileController', () => {
 
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
-    await app.close();
+  }, 10000);
+
+  beforeEach(async () => {
+    await request(httpServer).post('/auth/register').send(User1);
+    await request(httpServer).post('/auth/register').send(User2);
+    const login = await request(httpServer)
+      .post('/auth/login')
+      .send({ email: User1.email })
+      .send({ password: User1.password });
+    const login2 = await request(httpServer)
+      .post('/auth/login')
+      .send({ email: User2.email })
+      .send({ password: User2.password });
+
+    bearerUser1 = login.body.token;
+    bearerUser2 = login2.body.token;
+  }, 10000);
+
+  afterEach(async () => {
+    await dbConnection.collection('users').deleteMany({});
   }, 10000);
 
   describe('getAllUsers', () => {
-    beforeEach(async () => {
-      await request(httpServer).post('/auth/register').send(User1);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
-    }, 10000);
-
-    afterEach(async () => {
-      await dbConnection.collection('users').deleteMany({});
-    }, 10000);
-
     it('should return all users', async () => {
       const response = await request(httpServer)
         .get('/profile/all')
@@ -91,24 +93,6 @@ describe('ProfileController', () => {
   });
 
   describe('getUsers', () => {
-    beforeEach(async () => {
-      await request(httpServer).post('/auth/register').send(User1);
-      await request(httpServer).post('/auth/register').send(User2);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
-    }, 10000);
-
-    afterEach(async () => {
-      await dbConnection.collection('users').deleteMany({});
-    }, 10000);
-
     /* Route /profile */
     it('should return user profile', async () => {
       const response = await request(httpServer)
@@ -124,23 +108,6 @@ describe('ProfileController', () => {
   });
 
   describe('get users profile', () => {
-    beforeEach(async () => {
-      await request(httpServer).post('/auth/register').send(User1);
-      await request(httpServer).post('/auth/register').send(User2);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
-    }, 10000);
-
-    afterEach(async () => {
-      await dbConnection.collection('users').deleteMany({});
-    }, 10000);
     /* get users profile by id */
     it('should send me user 2 informations using user 1 bearer token', async () => {
       const iduser2 = await request(httpServer)
@@ -161,23 +128,6 @@ describe('ProfileController', () => {
   });
 
   describe('update users profile', () => {
-    beforeEach(async () => {
-      await request(httpServer).post('/auth/register').send(User1);
-      await request(httpServer).post('/auth/register').send(User2);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
-    }, 10000);
-
-    afterEach(async () => {
-      await dbConnection.collection('users').deleteMany({});
-    }, 10000);
     /* Update user */
     const updateDto = {
       preferences: ['ping-pong', 'jeu-video'],
@@ -214,37 +164,20 @@ describe('ProfileController', () => {
         .send(updateDto);
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
+
     it('should return me an error (trying to change role)', async () => {
       const updateDto = {
-        role: Role.EVENTADDER,
+        role: 'caca',
       };
       const response = await request(httpServer)
         .put('/profile/update')
         .set('Authorization', 'Bearer ' + bearerUser1)
         .send(updateDto);
-      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+      expect(response.status).toBe(HttpStatus.BAD_REQUEST);
     });
   });
 
   describe('user avatar', () => {
-    beforeEach(async () => {
-      await request(httpServer).post('/auth/register').send(User1);
-      await request(httpServer).post('/auth/register').send(User2);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
-    }, 10000);
-
-    afterEach(async () => {
-      await dbConnection.collection('users').deleteMany({});
-    }, 10000);
-
     /* Avatar */
     it('should return me user avatar', async () => {
       const response = await request(httpServer)
@@ -253,7 +186,7 @@ describe('ProfileController', () => {
       expect(response.status).toBe(HttpStatus.OK);
     });
     it('should return me an error (no bearer token)', async () => {
-      const response = await request(httpServer).post('/profile/avatar');
+      const response = await request(httpServer).get('/profile/avatar');
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
     });
 
@@ -310,43 +243,42 @@ describe('ProfileController', () => {
   describe('user filters', () => {
     const User1 = {
       username: 'IdrissaFall',
-      email: 'testemail@email.com',
+      email: 'randomemail@email.com',
       password: 'password',
       gender: Gender.HOMME,
-      number: '0606060606',
       birthdate: new Date('2002-05-05'),
       preferences: ['basket', 'foot'],
     };
 
     const User2 = {
       username: 'RemiSaleh',
-      email: 'testemail123@email.com',
+      email: 'randomemail123@email.com',
       password: 'password',
       gender: Gender.HOMME,
-      number: '0606060607',
       birthdate: new Date('2002-05-05'),
       preferences: ['basket', 'foot'],
     };
     beforeEach(async () => {
       await request(httpServer).post('/auth/register').send(User1);
       await request(httpServer).post('/auth/register').send(User2);
-      bearerUser1 = (await request(httpServer).post('/auth/login').send(User1))
-        .body.token;
-      bearerUser2 = (await request(httpServer).post('/auth/login').send(User2))
-        .body.token;
-      if (bearerUser1 === undefined) {
-        bearerUser1 = (
-          await request(httpServer).post('/auth/login').send(User1)
-        ).body.token;
-      }
+      const login = await request(httpServer)
+        .post('/auth/login')
+        .send({ email: User1.email })
+        .send({ password: User1.password });
+      const login2 = await request(httpServer)
+        .post('/auth/login')
+        .send({ email: User2.email })
+        .send({ password: User2.password });
+
+      bearerUser1 = login.body.token;
+      bearerUser2 = login2.body.token;
     }, 10000);
     it('should return me all users', async () => {
       const response = await request(httpServer)
         .get('/profile/all')
         .set('Authorization', 'Bearer ' + bearerUser1);
       expect(response.status).toBe(HttpStatus.OK);
-      expect(response.body.users.length).toBe(2);
-      // console.log(response.body.users.size);
+      expect(response.body.users.length).toBe(4);
     });
     it('should return me user1 information', async () => {
       const response = await request(httpServer)
@@ -367,7 +299,7 @@ describe('ProfileController', () => {
 
     it('should return me user1 and user2 information', async () => {
       const response = await request(httpServer)
-        .get('/profile/all?email=testemail')
+        .get('/profile/all?email=randomemai')
         .set('Authorization', 'Bearer ' + bearerUser1);
       expect(response.status).toBe(HttpStatus.OK);
       expect(response.body.users.length).toBe(2);

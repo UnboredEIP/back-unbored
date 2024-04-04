@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   ConflictException,
+  HttpStatus,
   Injectable,
   NotAcceptableException,
   UnauthorizedException,
@@ -11,11 +13,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { HttpStatus } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
-import { ChangePasswordDto } from './dto/changePassword.dto';
 import { MailerService } from '@nestjs-modules/mailer';
-// import { MailerService } from '@nestjs-modules/mailer';
+import { create } from 'domain';
+import * as qrcode from 'qrcode';
 
 const client = new OAuth2Client(process.env.GOOGLE_OAUTH2);
 
@@ -28,11 +29,6 @@ export class AuthService {
     private mailerService: MailerService,
   ) {}
 
-  /**
-   * Function used by the method "register" in AuthController to store new user to the database
-   * @param registerDto See the definition of the registerDto file to see the list of required propriety
-   * @returns Return a promise with the HTTP status and a message
-   */
   async register(
     registerDto: RegisterDto,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
@@ -42,39 +38,73 @@ export class AuthService {
       password,
       description,
       gender,
-      number,
+      birthdate,
+      preferences,
+      otp,
+    } = registerDto;
+    const hash = await bcrypt.hash(password, 10);
+    const existing = await this.userModel.find({
+      $or: [{ email: email }, { username: username }],
+    });
+
+    if (existing.length === 1 && existing[0].otp === undefined) {
+      throw new ConflictException('Duplicated key');
+    } else if (existing.length === 1 && existing[0].otp !== undefined) {
+      if (existing[0].otp.value.toString() === otp) {
+        await this.userModel.findOneAndDelete({ email: email });
+      } else {
+        return { statusCode: HttpStatus.NOT_ACCEPTABLE, message: 'Wrong otp' };
+      }
+    }
+    const user = await this.userModel.create({
+      username,
+      email: email.toLowerCase(),
+      gender,
+      role: Role.USER,
+      birthdate,
+      password: hash,
+      description,
+      preferences: preferences,
+    });
+    const qrCodeDataUrl = await qrcode.toDataURL(user._id.toString());
+    await this.userModel.findOneAndUpdate(
+      { email: email },
+      { qrCode: qrCodeDataUrl },
+    );
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Successfully created !',
+    };
+  }
+
+  async registerPro(
+    registerDto: RegisterDto,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const {
+      username,
+      email,
+      password,
+      description,
+      gender,
       birthdate,
       preferences,
     } = registerDto;
     const hash = await bcrypt.hash(password, 10);
     const existing = await this.userModel.find({
-      $or: [{ email: email }, { username: username }, { number: number }],
+      $or: [{ email: email }, { username: username }],
     });
     if (existing.length >= 1) {
       throw new ConflictException('Duplicated key');
     }
     await this.userModel.create({
       username,
-      email,
+      email: email.toLowerCase(),
       gender,
-      role: Role.USER,
+      role: Role.PRO,
       birthdate,
-      number,
       password: hash,
       description,
       preferences: preferences,
-      style: {
-        head: '0',
-        body: '0',
-        pants: '0',
-        shoes: '0',
-      },
-      unlockedStyle: {
-        head: ['0'],
-        body: ['0'],
-        pants: ['0'],
-        shoes: ['0'],
-      },
     });
     return {
       statusCode: HttpStatus.CREATED,
@@ -82,17 +112,11 @@ export class AuthService {
     };
   }
 
-  /**
-   * Function used by the method "login" in AuthController to login an user
-   * @param loginDto See the definition of the loginDto file to see the list of required propriety
-   * @returns Return a promise with the HTTP status an AuthToken and a RefreshToken
-   */
-
   async login(
     loginDto: LoginDto,
   ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
     const { email, password } = loginDto;
-    const user = await this.userModel.findOne({ email });
+    const user = await this.userModel.findOne({ email: email.toLowerCase() });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -101,19 +125,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const sign = await this.userModel
-      .findOne({ email })
-      .select('-password')
-      .select('-__v')
-      .select('-style')
-      .select('-unlockedStyle')
-      .select('-rates')
-      .select('-pictures')
-      .select('-groups')
-      .select('-invitations')
-      .select('-reservations')
-      .select('-favorites');
-
-    const token = this.jwtService.sign({ users: sign });
+      .findOne({ email: email.toLowerCase() })
+      .select('username email preferences profilePhoto');
+    const token = this.jwtService.sign(
+      { users: sign },
+      { expiresIn: '30d', secret: process.env.JWT_TOKEN },
+    );
     const refreshToken = this.jwtService.sign(
       { users: sign },
       { expiresIn: '90d', secret: process.env.JWT_REFRESH },
@@ -125,32 +142,19 @@ export class AuthService {
     };
   }
 
-  /**
-   * Function user by the method "refresh" in AuthController to refresh AuthToken
-   * @param user User is the current user who want to refresh his token
-   * @param head actualRefresh is the refreshToken of the user
-   * @returns Return a promise with the HTTP status and a new AuthToken and the RefreshToken
-   */
   async refresh(
     user: User,
     actualRefresh: string,
   ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
     const sign = await this.userModel
       .findById(user.id)
-      .select('-password')
-      .select('-__v')
-      .select('-style')
-      .select('-unlockedStyle')
-      .select('-rates')
-      .select('-pictures')
-      .select('-groups')
-      .select('-invitations')
-      .select('-reservations')
-      .select('-favorites');
-
+      .select('username email');
     return {
       statusCode: HttpStatus.ACCEPTED,
-      token: this.jwtService.sign({ users: sign }),
+      token: this.jwtService.sign(
+        { users: sign },
+        { expiresIn: '30d', secret: process.env.JWT_TOKEN },
+      ),
       refresh: actualRefresh,
     };
   }
@@ -175,26 +179,20 @@ export class AuthService {
     if (!user) {
       user = await this.userModel.create({
         email: email,
-        password: email + process.env.GOOGLE_PWD_CONFIG,
+        password: await bcrypt.hash(email + process.env.GOOGLE_PWD_CONFIG, 10),
         description: '',
-        style: {
-          head: '0',
-          body: '0',
-          pants: '0',
-          shoes: '0',
-        },
         role: Role.USER,
-        unlockedStyle: {
-          head: ['0'],
-          body: ['0'],
-          pants: ['0'],
-          shoes: ['0'],
-        },
       });
     }
-    const token = this.jwtService.sign({ id: user._id, role: user.role });
+    const sign = await this.userModel
+      .findOne({ email: email.toLowerCase() })
+      .select('username email preferences profilePhoto');
+    const token = this.jwtService.sign(
+      { users: sign },
+      { expiresIn: '30d', secret: process.env.JWT_TOKEN },
+    );
     const refreshToken = this.jwtService.sign(
-      { id: user._id, role: user.role },
+      { users: sign },
       { expiresIn: '90d', secret: process.env.JWT_REFRESH },
     );
     return {
@@ -207,19 +205,22 @@ export class AuthService {
   async askResetPassword(
     email: string,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
-    const token = this.jwtService.sign(
-      { email: email },
-      { expiresIn: '5min', secret: process.env.RESET_PASSWORD_SECRET },
-    );
+    if (!email) throw new BadRequestException('Bad Requests');
     const userExists = await this.userModel.findOne({ email: email });
-    if (!userExists) {
+    if (!userExists || userExists.otp !== undefined) {
       return {
         statusCode: HttpStatus.ACCEPTED,
         message: 'If account exists mail will be sent',
       };
     }
-    console.log(process.env.UNBORED_MAIL);
-    console.log(process.env.UNBORED_PASSWORD);
+    const token = this.jwtService.sign(
+      { email: email },
+      { expiresIn: '5min', secret: process.env.RESET_PASSWORD_SECRET },
+    );
+    await this.userModel.findOneAndUpdate(
+      { email: email },
+      { resetToken: token },
+    );
     const emailContent = {
       to: email,
       subject: 'Mot de passe oublié',
@@ -230,7 +231,6 @@ export class AuthService {
             </div>`,
     };
     await this.mailerService.sendMail(emailContent);
-    console.log(token);
     return {
       statusCode: HttpStatus.ACCEPTED,
       message: 'If account exists mail will be sent',
@@ -241,18 +241,83 @@ export class AuthService {
     tokenId: string,
     password: string,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const decodedToken = await this.jwtService.decode(tokenId);
+    if (!tokenId || !decodedToken) {
+      throw new BadRequestException('Bad Request');
+    }
+    const user = await this.userModel.findOne({ email: decodedToken.email });
     try {
-      const decodedToken = this.jwtService.verify(tokenId, {
+      await this.jwtService.verify(tokenId, {
         secret: process.env.RESET_PASSWORD_SECRET,
       });
-      const hash = await bcrypt.hash(password, 10);
       await this.userModel.findOneAndUpdate(
-        { email: decodedToken.email },
-        { password: hash },
+        { email: user.email },
+        { $set: { resetToken: null } },
       );
     } catch (error) {
+      await this.userModel.findOneAndUpdate(
+        { email: decodedToken.email },
+        { $set: { resetToken: null } },
+      );
+      console.log(error);
       throw new NotAcceptableException('Expired');
     }
+    if (!(user.resetToken !== undefined && user.resetToken === tokenId)) {
+      return {
+        statusCode: HttpStatus.FORBIDDEN,
+        message: 'Pasword already changed',
+      };
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await this.userModel.findOneAndUpdate(
+      { email: decodedToken.email },
+      { password: hash },
+    );
     return { statusCode: HttpStatus.ACCEPTED, message: 'Password Changed' };
+  }
+
+  async otpGeneration(
+    email: string,
+    username: string,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    if (!email || !username) throw new BadRequestException('Bad Request');
+    const existing = await this.userModel.find({
+      $or: [{ email: email }, { username: username }],
+    });
+    if (existing.length >= 1) {
+      throw new ConflictException('Duplicated key');
+    }
+    const otp = 100000 + Math.floor(Math.random() * 900000);
+    const date = new Date();
+    const emailContent = {
+      to: email,
+      subject: 'Code OTP',
+      text: '',
+      html: `
+            <div>
+                <a> Voici votre code : ${otp} </a></a>
+            </div>`,
+    };
+    await this.userModel.create({
+      email: email.toLocaleLowerCase(),
+      otp: { value: otp, createdAt: date },
+      username: username,
+    });
+    await this.mailerService.sendMail(emailContent);
+    return { statusCode: HttpStatus.ACCEPTED, message: 'OTP send by mail' };
+  }
+
+  async verifyOtp(
+    email: string,
+    otp: string,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const user = await this.userModel.findOne({ email: email });
+    if (!user || !email || !otp) {
+      throw new BadRequestException('Bad request');
+    }
+    if (!(user.otp.value.toString() === otp)) {
+      return { statusCode: HttpStatus.BAD_REQUEST, message: 'Wrong otp' };
+    }
+    return { statusCode: HttpStatus.OK, message: 'Otp verified' };
   }
 }

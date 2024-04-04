@@ -1,6 +1,5 @@
 import {
   Controller,
-  Get,
   Post,
   Query,
   Headers,
@@ -9,89 +8,203 @@ import {
   Res,
   UseGuards,
   HttpStatus,
+  ValidationPipe,
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtGuard } from './guards/jwt-auth.guard';
 import { RefreshGuard } from './guards/refresh-auth.guard';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  /**
-   * Method for '/register' route
-   * @param registerDto See the definition of the registerDto file to see the list of required propriety
-   * @returns Return a promise with the HTTP status and a message
-   */
   @Post('/register')
-  register(
-    @Body() registerDto: RegisterDto,
+  @ApiTags('Authentication')
+  @ApiOperation({ summary: 'Register an account' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async register(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    registerDto: RegisterDto,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
-    res.status(HttpStatus.CREATED);
-    return this.authService.register(registerDto);
+    const response = await this.authService.register(registerDto);
+    res.status(response.statusCode);
+    return response;
   }
 
-  /**
-   * Method for '/login' route
-   * @param loginDto See the definition of the loginDto file to see the list of required propriety
-   * @returns Return a promise with the HTTP status an AuthToken and a RefreshToken
-   */
+  @Post('/register/pro')
+  @ApiTags('Authentication')
+  @ApiOperation({ summary: 'Register an account' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async registerPro(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    registerDto: RegisterDto,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.authService.registerPro(registerDto);
+    res.status(response.statusCode);
+    return response;
+  }
+
   @Post('/login')
-  login(
-    @Body() loginDto: LoginDto,
+  @ApiTags('Authentication')
+  @ApiOperation({ summary: 'Login an account' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async login(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    loginDto: LoginDto,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
-    res.status(HttpStatus.ACCEPTED);
-    return this.authService.login(loginDto);
+    const response = await this.authService.login(loginDto);
+    res.status(response.statusCode);
+    return response;
   }
-
-  /**
-   * Method for '/refresh' route
-   * @param req req stores an user translated by JwtStrategy
-   * @param head head has to store a refresh token
-   * @returns Return a promise with the HTTP status and a new AuthToken and the RefreshToken
-   */
 
   @UseGuards(RefreshGuard)
   @UseGuards(JwtGuard)
   @Post('/refresh')
-  refresh(
+  @ApiTags('Authentication')
+  @ApiHeader({ name: 'refresh', required: true })
+  @ApiOperation({ summary: 'Get a new token using refresh token' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async refresh(
     @Req() req,
     @Headers() head,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
-    res.status(HttpStatus.ACCEPTED);
-    return this.authService.refresh(req.user, head.refresh);
+    const response = await this.authService.refresh(req.user, head.refresh);
+    res.status(response.statusCode);
+    return response;
   }
 
   @Post('/login/google')
-  loginGoogle(
+  @ApiTags('Authentication')
+  @ApiOperation({ summary: 'Login with google oauth (not working on swagger)' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async loginGoogle(
     @Body() body,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; token: string; refresh: string }> {
-    res.status(HttpStatus.ACCEPTED);
-    return this.authService.googleLogin(body?.googleTokenId);
+    const response = await this.authService.googleLogin(body?.googleTokenId);
+    res.status(response.statusCode);
+    return response;
   }
 
   @Post('/askreset')
-  askResetPassword(
+  @ApiTags('Password Management')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Ask for email request to reset password' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async askResetPassword(
     @Body() Body,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
-    res.status(HttpStatus.ACCEPTED);
-    return this.authService.askResetPassword(Body?.email);
+    const response = await this.authService.askResetPassword(Body?.email);
+    res.status(response.statusCode);
+    return response;
   }
 
   @Post('/reset')
-  resetPassword(
+  @ApiTags('Password Management')
+  @ApiHeader({ name: 'id', required: true })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOperation({ summary: 'Reset password using token on request email link' })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async resetPassword(
     @Body() Body,
     @Query('id') id,
     @Res({ passthrough: true }) res,
   ): Promise<{ statusCode: HttpStatus; message: string }> {
-    res.status(HttpStatus.ACCEPTED);
-    return this.authService.resetPassword(id, Body?.password);
+    const response = await this.authService.resetPassword(id, Body?.password);
+    res.status(response.statusCode);
+    return response;
+  }
+
+  @Post('/otp')
+  @ApiTags('Authentication')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+        },
+        username: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary:
+      'Send a OTP code by mail and check if the username and the email is used',
+  })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async otpGeneration(
+    @Body() Body,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.authService.otpGeneration(
+      Body.email,
+      Body.username,
+    );
+    res.status(response.statusCode);
+    return response;
+  }
+
+  @Post('/otp/verify')
+  @ApiTags('Authentication')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+        },
+        otp: {
+          type: 'string',
+        },
+      },
+    },
+  })
+  @ApiOperation({
+    summary: 'check if the otp is the good one identified by email',
+  })
+  @ApiConsumes('application/x-www-form-urlencoded', 'application/json')
+  async otpVerification(
+    @Body() Body,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.authService.verifyOtp(Body.email, Body.otp);
+    res.status(response.statusCode);
+    return response;
   }
 }

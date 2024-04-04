@@ -1,28 +1,38 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsEnum,
   IsNotEmpty,
   IsString,
-  IsEmail,
   IsArray,
-  IsDateString,
   ArrayMinSize,
   IsOptional,
+  IsDateString,
 } from 'class-validator';
 
-export class createEventDto {
+export class EditEventDto {
+  @IsOptional()
   @IsNotEmpty()
   @IsString()
+  @ApiProperty()
   readonly name: string;
 
+  @IsOptional()
   @IsNotEmpty()
   @IsString()
+  @ApiProperty()
   readonly address: string;
 
+  @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
+  @ApiProperty()
   readonly categories: string[];
 
   @IsOptional()
+  @ApiProperty()
   @IsDateString()
-  readonly date: string;
+  readonly start_date: Date;
+
+  @IsOptional()
+  @ApiProperty()
+  readonly description: string;
 }

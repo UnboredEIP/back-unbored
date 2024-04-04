@@ -1,19 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
-  HttpCode,
+  HttpStatus,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User } from '../auth/schemas/user.schema';
 import { UpdateDto } from './dto/update.dto';
 import { UpdateAvatarDto } from './dto/updateAvatar.dto';
-import { Types } from 'mongoose';
-import { HttpStatus } from '@nestjs/common';
-import { FilterQuery } from 'mongoose';
 import { QueryUsersDto } from './dto/queryUsers.dto';
 
 @Injectable()
@@ -25,10 +21,11 @@ export class ProfileService {
 
   async getAll(
     query: QueryUsersDto,
-  ): Promise<{ status: HttpStatus; users: User[] }> {
+  ): Promise<{ statusCode: HttpStatus; users: User[] }> {
     const queries = {};
     Object.keys(query).forEach((key) => {
-      queries[key] = { $regex: query[key], $options: 'i' };
+      if (key === 'email' || key === 'username')
+        queries[key] = { $regex: query[key], $options: 'i' };
     });
     // Correspondance complete :
     const allUsers = await this.userModel
@@ -41,38 +38,35 @@ export class ProfileService {
     //         [key]: {$regex: options[key], $options: "i"}
     //     }))
     // }).select('-password').select('-__v');
-    return { status: HttpStatus.OK, users: allUsers };
+    return { statusCode: HttpStatus.OK, users: allUsers };
   }
 
-  async profile(user: User): Promise<{ status: HttpStatus; user: User }> {
-    return { status: HttpStatus.OK, user: user as User };
+  async profile(user: User): Promise<{ statusCode: HttpStatus; user: User }> {
+    return { statusCode: HttpStatus.OK, user: user };
   }
 
   async getprofilebyid(
     profilId: string,
-  ): Promise<{ status: HttpStatus; user: User }> {
+  ): Promise<{ statusCode: HttpStatus; user: User }> {
     if (!Types.ObjectId.isValid(profilId))
       throw new NotFoundException('Invalid Id');
     const getUser = await this.userModel
       .findById(profilId)
       .select('-password')
       .select('-__v');
-    return { status: HttpStatus.OK, user: getUser as User };
+    return { statusCode: HttpStatus.OK, user: getUser as User };
   }
 
   async UpdateUser(
     id: string,
     updateUser: UpdateDto,
-  ): Promise<{ status: HttpStatus; user: User }> {
-    if (updateUser.role) {
-      throw new UnauthorizedException('Role is cannot be modified');
-    }
+  ): Promise<{ statusCode: HttpStatus; user: User }> {
     try {
       const updatedUser = await this.userModel
         .findByIdAndUpdate(id, updateUser, { new: true })
         .select('-password')
         .select('-__v');
-      return { status: HttpStatus.OK, user: updatedUser as User };
+      return { statusCode: HttpStatus.OK, user: updatedUser as User };
     } catch (error) {
       if (error.code === 11000) {
         throw new ConflictException('Already used key');
@@ -82,29 +76,34 @@ export class ProfileService {
 
   async UserActualAvatar(
     user: User,
-  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
-    return { status: HttpStatus.OK, style: user.style as NonNullable<unknown> };
+  ): Promise<{ statusCode: HttpStatus; style: Object }> {
+    return { statusCode: HttpStatus.OK, style: user.style as Object };
   }
 
   async UserAvatars(
     user: User,
-  ): Promise<{ status: HttpStatus; unlockedStyles: NonNullable<unknown> }> {
-    return { status: HttpStatus.OK, unlockedStyles: user.unlockedStyle };
+  ): Promise<{ statusCode: HttpStatus; unlockedStyles: Object }> {
+    return { statusCode: HttpStatus.OK, unlockedStyles: user.unlockedStyle };
   }
 
   async ChangeAvatar(
     id: string,
     updateAvatarDto: UpdateAvatarDto,
-  ): Promise<{ status: HttpStatus; style: NonNullable<unknown> }> {
+  ): Promise<{ statusCode: HttpStatus; style: Object }> {
+    const updateQuery = {
+      $set: {},
+    };
+
+    Object.keys(updateAvatarDto.style).forEach((key) => {
+      updateQuery.$set[`style.${key}`] = updateAvatarDto.style[key];
+    });
+
     const avatarUpdate = await this.userModel.findByIdAndUpdate(
       id,
-      { $set: updateAvatarDto },
+      updateQuery,
       { new: true },
     );
-    return {
-      status: HttpStatus.OK,
-      style: avatarUpdate.style as NonNullable<unknown>,
-    };
+    return { statusCode: HttpStatus.OK, style: avatarUpdate.style as Object };
   }
 
   async uploadProfilePicture(
@@ -114,10 +113,9 @@ export class ProfileService {
     try {
       const user = await this.userModel.findOneAndUpdate(
         { _id: userId },
-        { profilPhoto: file.filename },
+        { profilePhoto: file.filename },
         { new: true },
       );
-      console.log(user);
       return { statusCode: HttpStatus.OK, message: 'Image uploaded !' };
     } catch (err) {
       throw new BadRequestException('Bad request');

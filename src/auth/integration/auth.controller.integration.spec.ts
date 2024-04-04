@@ -14,7 +14,6 @@ const User1 = {
   email: 'testemailauth@email.com',
   password: 'password',
   gender: Gender.HOMME,
-  number: '0606060606',
   birthdate: new Date('2002-05-05'),
   preferences: ['basket', 'foot'],
 };
@@ -51,7 +50,6 @@ describe('AuthController', () => {
 
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
-    await app.close();
   });
 
   describe('registration', () => {
@@ -90,7 +88,8 @@ describe('AuthController', () => {
     it('should login an account', async () => {
       const response = await request(httpServer)
         .post('/auth/login')
-        .send(User1);
+        .send({ email: User1.email })
+        .send({ password: User1.password });
       expect(response.status).toBe(HttpStatus.ACCEPTED);
     });
 
@@ -116,7 +115,8 @@ describe('AuthController', () => {
       await request(httpServer).post('/auth/register').send(User1);
       const myTokens = await request(httpServer)
         .post('/auth/login')
-        .send(User1);
+        .send({ email: User1.email })
+        .send({ password: User1.password });
       const response = await request(httpServer)
         .post('/auth/refresh')
         .set('Authorization', 'Bearer ' + myTokens.body.token)

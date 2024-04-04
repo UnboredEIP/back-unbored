@@ -1,7 +1,8 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 
-export class sendMessageDto {
-  @IsNotEmpty()
+export class SendMessageDto {
+  @ApiProperty()
   @IsString()
   readonly message: string;
 }

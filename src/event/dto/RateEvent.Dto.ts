@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEnum,
   IsNotEmpty,
@@ -9,13 +10,15 @@ import {
   IsOptional,
 } from 'class-validator';
 
-export class rateEventDto {
+export class RateEventDto {
   @IsNotEmpty()
   @IsString()
+  @ApiProperty()
   readonly stars: string;
 
   @IsNotEmpty()
   @IsString()
   @IsOptional()
+  @ApiProperty()
   readonly comments: string;
 }

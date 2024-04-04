@@ -8,12 +8,13 @@ import {
   Body,
   Query,
   Delete,
+  ValidationPipe,
+  Res,
 } from '@nestjs/common';
 import { JwtGuard } from 'src/auth/guards/jwt-auth.guard';
-import { createGroupDto } from './dto/CreateGroup.dto';
-import { sendMessageDto } from './dto/SendMessage.dto';
+import { SendMessageDto } from './dto/sendMessage.dto';
 import { GroupService } from './group.service';
-import { Groups } from './schemas/group.schema';
+import { ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 @Controller('group')
 export class GroupController {
@@ -21,71 +22,83 @@ export class GroupController {
 
   @UseGuards(JwtGuard)
   @Get('/')
-  async showGroup(
+  @ApiTags('Users Group')
+  @ApiSecurity('authentication')
+  @ApiOperation({ summary: 'Show current user groups' })
+  async showGroups(
     @Req() req,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown>[] }> {
-    return this.groupService.showGroups(req.user);
-  }
-
-  @UseGuards(JwtGuard)
-  @Get('/show')
-  async showGroupWithId(
-    @Query('group_id') id,
-  ): Promise<{ status: HttpStatus; groups: NonNullable<unknown> }> {
-    return this.groupService.showGroupWithId(id);
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; groups: Object[] }> {
+    const response = await this.groupService.showGroups(req.user);
+    res.status(response.statusCode);
+    return response;
   }
 
   @UseGuards(JwtGuard)
   @Get('/invitations')
+  @ApiTags('Users Group')
+  @ApiSecurity('authentication')
+  @ApiOperation({ summary: 'Show current user group invitations' })
   async showInvitation(
     @Req() req,
-  ): Promise<{ status: HttpStatus; invitations: NonNullable<unknown>[] }> {
-    return this.groupService.showInvitation(req.user);
-  }
-
-  @UseGuards(JwtGuard)
-  @Post('/create')
-  async createGroup(
-    @Req() req,
-    @Body() createGroupDto: createGroupDto,
-  ): Promise<{ status: HttpStatus; group: Groups }> {
-    return this.groupService.createGroup(req.user, createGroupDto);
-  }
-
-  @UseGuards(JwtGuard)
-  @Post('/invite')
-  async inviteInGroup(
-    @Query('group_id') id,
-    @Query('user_id') userId,
-  ): Promise<{ status: HttpStatus; message: string }> {
-    return this.groupService.inviteInGroup(id, userId);
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; invitations: Object[] }> {
+    const response = await this.groupService.showInvitation(req.user);
+    res.status(response.statusCode);
+    return response;
   }
 
   @UseGuards(JwtGuard)
   @Post('/accept')
+  @ApiTags('Users Group')
+  @ApiSecurity('authentication')
+  @ApiOperation({ summary: 'Accept group invitation with group id' })
+  @ApiQuery({ name: 'group_id', required: true })
   async acceptInvitation(
     @Query('group_id') id,
     @Req() req,
-  ): Promise<{ status: HttpStatus; message: string }> {
-    return this.groupService.acceptInvitation(req.user, id);
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.groupService.acceptInvitation(req.user, id);
+    res.status(response.statusCode);
+    return response;
   }
 
   @UseGuards(JwtGuard)
   @Delete('/delete')
+  @ApiTags('Users Group')
+  @ApiSecurity('authentication')
+  @ApiOperation({ summary: 'Delete group invitation with group id' })
+  @ApiQuery({ name: 'group_id', required: true })
   async deleteInvitation(
     @Query('group_id') id,
     @Req() req,
-  ): Promise<{ status: HttpStatus; message: string }> {
-    return this.groupService.deleteInvitation(req.user, id);
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.groupService.deleteInvitation(req.user, id);
+    res.status(response.statusCode);
+    return response;
   }
 
   @UseGuards(JwtGuard)
   @Post('/message')
+  @ApiTags('Users Group')
+  @ApiSecurity('authentication')
+  @ApiOperation({ summary: 'Send message in a group with group id' })
+  @ApiQuery({ name: 'group_id', required: true })
   async sendMessage(
     @Query('group_id') id,
     @Req() req,
-    @Body() sendMessageDto: sendMessageDto,
-  ): Promise<{ status: HttpStatus; message: string }> {
-    return this.groupService.sendMessage(req.user, id, sendMessageDto);
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    sendMessageDto: SendMessageDto,
+    @Res({ passthrough: true }) res,
+  ): Promise<{ statusCode: HttpStatus; message: string }> {
+    const response = await this.groupService.sendMessage(
+      req.user,
+      id,
+      sendMessageDto,
+    );
+    res.status(response.statusCode);
+    return response;
   }
 }

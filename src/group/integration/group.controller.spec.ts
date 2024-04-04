@@ -9,13 +9,13 @@ import { AuthModule } from '../../auth/auth.module';
 import { DatabaseModule } from '../../database/database.module';
 import { ConfigModule } from '@nestjs/config';
 import { GroupModule } from '../group.module';
+import { GroupsModule } from '../../groups/groups.module';
 
 const User1 = {
   username: 'testusernameevent',
   email: 'testemailevent@email.com',
   password: 'password',
   gender: Gender.HOMME,
-  number: '0606060606',
   birthdate: new Date('2002-05-05'),
   preferences: ['basket', 'foot'],
 };
@@ -25,7 +25,6 @@ const User2 = {
   email: 'testemail123@email.com',
   password: 'password',
   gender: Gender.HOMME,
-  number: '0606060607',
   birthdate: new Date('2002-05-05'),
   preferences: ['basket', 'foot'],
 };
@@ -42,6 +41,7 @@ describe('EventController', () => {
       imports: [
         ConfigModule.forRoot({ isGlobal: true }),
         GroupModule,
+        GroupsModule,
         AuthModule,
         DatabaseModule.forRoot(
           `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_USER_PASS}@localhost:27017/unboredGroupEnv`,
@@ -61,15 +61,19 @@ describe('EventController', () => {
   }, 10000);
 
   beforeEach(async () => {
-    await request(httpServer).post('/auth/register').send(User1);
+    await request(httpServer).post('/auth/register/pro').send(User1);
     await request(httpServer).post('/auth/register').send(User2);
 
-    groupUserBearer = (
-      await request(httpServer).post('/auth/login').send(User1)
-    ).body.token;
-    groupUser2Bearer = (
-      await request(httpServer).post('/auth/login').send(User2)
-    ).body.token;
+    const login = await request(httpServer)
+      .post('/auth/login')
+      .send({ email: User1.email })
+      .send({ password: User1.password });
+    const login1 = await request(httpServer)
+      .post('/auth/login')
+      .send({ email: User2.email })
+      .send({ password: User2.password });
+    groupUserBearer = login.body.token;
+    groupUser2Bearer = login1.body.token;
   }, 10000);
 
   afterEach(async () => {
@@ -80,7 +84,6 @@ describe('EventController', () => {
   afterAll(async () => {
     await dbConnection.collection('users').deleteMany({});
     await dbConnection.collection('groups').deleteMany({});
-    await app.close();
   }, 10000);
 
   describe('user groups', () => {
@@ -93,7 +96,7 @@ describe('EventController', () => {
 
     it('should create a group', async () => {
       const response = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       expect(response.status).toBe(HttpStatus.CREATED);
@@ -101,11 +104,11 @@ describe('EventController', () => {
 
     it('should not create a group (conflit)', async () => {
       await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const response = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       expect(response.status).toBe(HttpStatus.CONFLICT);
@@ -115,19 +118,19 @@ describe('EventController', () => {
   describe('show groups', () => {
     it('should return groups informations', async () => {
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       const response = await request(httpServer)
-        .get('/group/show?group_id=' + groupId)
+        .get('/groups/show?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUserBearer);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
     });
     it('should not return groups informations (bad id)', async () => {
       const badGroupId = new Types.ObjectId();
       const response = await request(httpServer)
-        .get('/group/show?group_id=' + badGroupId)
+        .get('/groups/show?group_id=' + badGroupId)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       expect(response.body.statusCode).toBe(HttpStatus.NOT_FOUND);
     });
@@ -138,7 +141,7 @@ describe('EventController', () => {
       const response = await request(httpServer)
         .get('/group/invitations')
         .set('Authorization', 'Bearer ' + groupUserBearer);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
     });
   });
 
@@ -150,14 +153,14 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       const response = await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
       expect(response.body.message).toMatch('invitation successfully sended !');
     });
 
@@ -168,17 +171,17 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       const response = await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
-      expect(response.body.status).toBe(HttpStatus.CONFLICT);
+      expect(response.body.statusCode).toBe(HttpStatus.CONFLICT);
       expect(response.body.message).toMatch('user already got an invitation !');
     });
 
@@ -191,7 +194,7 @@ describe('EventController', () => {
       const badGroupId = new Types.ObjectId();
       const response = await request(httpServer)
         .post(
-          '/group/invite?group_id=' +
+          '/groups/invite?group_id=' +
             badGroupId._id +
             '&' +
             'user_id=' +
@@ -205,13 +208,13 @@ describe('EventController', () => {
     it('should not invite user 2 in groups (bad user id) ', async () => {
       const badUserId = new Types.ObjectId();
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       const response = await request(httpServer)
         .post(
-          '/group/invite?group_id=' +
+          '/groups/invite?group_id=' +
             groupId +
             '&' +
             'user_id=' +
@@ -229,20 +232,20 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       await request(httpServer)
         .post('/group/accept?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer);
       const response = await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
-      expect(response.body.status).toBe(HttpStatus.CONFLICT);
+      expect(response.body.statusCode).toBe(HttpStatus.CONFLICT);
       expect(response.body.message).toMatch('user already in this group !');
     });
   });
@@ -255,29 +258,29 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       const response = await request(httpServer)
         .post('/group/accept?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
       expect(response.body.message).toMatch('Successfully joined group !');
     });
     it('should not accept an invitations from a group (no invitations)', async () => {
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       const response = await request(httpServer)
         .post('/group/accept?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer);
-      expect(response.body.status).toBe(HttpStatus.NOT_ACCEPTABLE);
+      expect(response.body.statusCode).toBe(HttpStatus.NOT_ACCEPTABLE);
       expect(response.body.message).toMatch(
         'user did not had an invitation from this group',
       );
@@ -292,31 +295,31 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       const response = await request(httpServer)
         .delete('/group/delete?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
       expect(response.body.message).toMatch(
         'successsfully rejected invitation !',
       );
     });
     it('should not delete an invitations from a group (no invitations)', async () => {
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       const response = await request(httpServer)
         .delete('/group/delete?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer);
-      expect(response.body.status).toBe(HttpStatus.NOT_ACCEPTABLE);
+      expect(response.body.statusCode).toBe(HttpStatus.NOT_ACCEPTABLE);
       expect(response.body.message).toMatch(
         'user did not had an invitation from this group',
       );
@@ -335,12 +338,12 @@ describe('EventController', () => {
           .findOne({ username: User2.username })
       )._id;
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;
       await request(httpServer)
-        .post('/group/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
+        .post('/groups/invite?group_id=' + groupId + '&' + 'user_id=' + user2Id)
         .set('Authorization', 'Bearer ' + groupUserBearer);
       await request(httpServer)
         .post('/group/accept?group_id=' + groupId)
@@ -350,7 +353,7 @@ describe('EventController', () => {
         .post('/group/message?group_id=' + groupId)
         .set('Authorization', 'Bearer ' + groupUser2Bearer)
         .send(messageDto);
-      expect(response.body.status).toBe(HttpStatus.OK);
+      expect(response.body.statusCode).toBe(HttpStatus.OK);
       expect(response.body.message).toMatch(
         messageDto.message + ' has been posted !',
       );
@@ -359,7 +362,7 @@ describe('EventController', () => {
     it('should not send a messaage to a group (not in group)', async () => {
       /* user 2 join group */
       const group = await request(httpServer)
-        .post('/group/create')
+        .post('/groups/create')
         .set('Authorization', 'Bearer ' + groupUserBearer)
         .send({ name: 'heelo' });
       const groupId = group.body.group._id;

@@ -6,7 +6,6 @@ import { DatabaseService } from './database.service';
 @Module({})
 export class DatabaseModule {
   static forRoot(uri?: string): DynamicModule {
-    // console.log("URI : ",  configService.get<string>('NODE_ENV'));
     return {
       module: DatabaseModule,
       imports: [
